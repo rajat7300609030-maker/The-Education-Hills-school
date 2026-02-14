@@ -156,7 +156,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
-      {/* --- DEFAULTERS REGISTRY (Expands from 5 to 20) --- */}
+      {/* --- DEFAULTERS REGISTRY --- */}
       {isAdmin && (
         <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-8">
             <div className="flex items-center justify-between mb-8">
@@ -245,7 +245,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
       </div>
 
-      {/* --- AUDIT MODAL (Size Optimized to max-w-3xl) --- */}
+      {/* --- AUDIT MODAL (Optimized max-w-3xl) --- */}
       {isAuditModalOpen && isAdmin && (
           <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-fade-in" onClick={() => setIsAuditModalOpen(false)}>
               <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden flex flex-col animate-scale-in border border-white/20" onClick={e => e.stopPropagation()}>

@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { AppData } from "../types";
 
@@ -55,7 +54,6 @@ export const askSchoolAssistant = async (
     `;
 
     // Using recommended model 'gemini-3-flash-preview'
-    // Utilizing systemInstruction and ensuring contents alternates roles correctly
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: [
@@ -72,6 +70,6 @@ export const askSchoolAssistant = async (
     return response.text || "🤖 I couldn't generate a text response.";
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "⚠️ Sorry, I encountered an error while processing your request. Please ensure your API key is valid.";
+    return "⚠️ Sorry, I encountered an error while processing your request. Please ensure your API key is valid in the environment settings.";
   }
 };
