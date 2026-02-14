@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { AppData, AppSettings } from '../types';
+import { AppData, AppSettings, FeeRecord, ExpenseRecord } from '../types';
 
 interface DashboardProps {
   data: AppData;
@@ -7,6 +7,7 @@ interface DashboardProps {
   onUpdateSettings: (settings: AppSettings) => void;
   onNavigateToFees: () => void;
   onNavigateToExpenses: () => void;
+  onViewStudentProfile?: (id: string) => void;
   userRole?: 'ADMIN' | 'STUDENT';
   currentStudentId?: string;
 }
@@ -59,9 +60,14 @@ const Dashboard: React.FC<DashboardProps> = ({
   onUpdateSettings,
   onNavigateToFees, 
   onNavigateToExpenses, 
+  onViewStudentProfile,
   userRole = 'ADMIN', 
   currentStudentId 
 }) => {
+  const [isTodayLedgerOpen, setIsTodayLedgerOpen] = useState(false);
+  // Default audit date is today (YYYY-MM-DD)
+  const [auditDate, setAuditDate] = useState(new Date().toISOString().split('T')[0]);
+  
   const currentSession = data.schoolProfile.currentSession;
   
   // Isolated data based on session
@@ -74,7 +80,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   
   const isAdmin = userRole === 'ADMIN';
 
-  // --- Financial Calculations (Session Specific) ---
+  // --- Global Financial Calculations (Session Specific) ---
   const totalRevenue = isAdmin ? activeFees
     .filter((f) => f.status === 'Paid')
     .reduce((sum, f) => sum + f.amount, 0) : 0;
@@ -86,26 +92,47 @@ const Dashboard: React.FC<DashboardProps> = ({
   const totalDue = Math.max(0, totalExpected - totalRevenue);
   const totalExpenses = isAdmin ? activeExpenses.reduce((sum, e) => sum + e.amount, 0) : 0;
   const netProfit = totalRevenue - totalExpenses;
-  const collectionRate = totalExpected > 0 ? Math.round((totalRevenue / totalExpected) * 100) : 0;
 
-  // --- Today's Calculations ---
+  // --- Today's Stats (For the Dashboard Card) ---
   const todayStr = new Date().toISOString().split('T')[0];
-  const todayCollection = useMemo(() => 
-    activeFees.filter(f => f.status === 'Paid' && f.date === todayStr).reduce((sum, f) => sum + f.amount, 0),
-  [activeFees, todayStr]);
+  const todaysCollections = useMemo(() => activeFees.filter(f => f.status === 'Paid' && f.date === todayStr), [activeFees, todayStr]);
+  const todaysExpenses = useMemo(() => activeExpenses.filter(e => e.date === todayStr), [activeExpenses, todayStr]);
+  const todayCollectionTotal = todaysCollections.reduce((sum, f) => sum + f.amount, 0);
+  const todayExpenseTotal = todaysExpenses.reduce((sum, e) => sum + e.amount, 0);
 
-  const todayExpense = useMemo(() => 
-    activeExpenses.filter(e => e.date === todayStr).reduce((sum, e) => sum + e.amount, 0),
-  [activeExpenses, todayStr]);
+  // --- Audit Modal Stats (Dynamic based on auditDate) ---
+  const auditCollections = useMemo(() => 
+    activeFees.filter(f => f.status === 'Paid' && f.date === auditDate),
+  [activeFees, auditDate]);
 
-  // --- Class Distribution Calculation (FIXED COUNT LOGIC) ---
+  const auditExpenses = useMemo(() => 
+    activeExpenses.filter(e => e.date === auditDate),
+  [activeExpenses, auditDate]);
+
+  const auditCollectionTotal = auditCollections.reduce((sum, f) => sum + f.amount, 0);
+  const auditExpenseTotal = auditExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const auditNet = auditCollectionTotal - auditExpenseTotal;
+
+  // --- Defaulters List (Top 20) ---
+  const topDefaulters = useMemo(() => {
+    if (!isAdmin) return [];
+    return activeStudents.map(student => {
+        const studentFees = activeFees.filter(f => f.studentId === student.id);
+        const paid = studentFees.filter(f => f.status === 'Paid').reduce((sum, f) => sum + f.amount, 0);
+        const totalLiability = (student.totalAgreedFees || 0) + (student.backLogs || 0);
+        const due = totalLiability - paid;
+        return { ...student, due };
+    })
+    .filter(s => s.due > 0)
+    .sort((a, b) => b.due - a.due)
+    .slice(0, 20);
+  }, [activeStudents, activeFees, isAdmin]);
+
+  // --- Class Distribution Calculation ---
   const classStats = useMemo(() => {
     if (!isAdmin || activeStudents.length === 0) return { stats: [], gradient: 'transparent', total: 0 };
     
-    // Total should be the absolute length of active students to fix "127 vs 124" issue
     const totalCount = activeStudents.length;
-
-    // Calculate counts per known class
     const stats = data.classes.map((cls, idx) => {
       const count = activeStudents.filter(s => s.grade === cls).length;
       return {
@@ -114,18 +141,6 @@ const Dashboard: React.FC<DashboardProps> = ({
         color: ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'][idx % 8]
       };
     }).filter(s => s.count > 0);
-
-    // Identify students with grades not in the classes list
-    const knownGrades = new Set(data.classes);
-    const othersCount = activeStudents.filter(s => !knownGrades.has(s.grade)).length;
-
-    if (othersCount > 0) {
-        stats.push({
-            name: 'Others',
-            count: othersCount,
-            color: '#94a3b8'
-        });
-    }
 
     let cumulative = 0;
     const gradientParts = stats.map(s => {
@@ -136,7 +151,6 @@ const Dashboard: React.FC<DashboardProps> = ({
     });
 
     const gradient = stats.length > 0 ? `conic-gradient(${gradientParts.join(', ')})` : 'transparent';
-    
     const finalStats = stats.map(s => ({
         ...s,
         percentage: totalCount > 0 ? Math.round((s.count / totalCount) * 100) : 0
@@ -160,7 +174,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       return { student, totalLiability, paidTotal, dueAmount, progress, history, backLogs: student.backLogs || 0 };
   }, [isAdmin, currentStudentId, data.students, data.fees, currentSession]);
 
-  // --- Recent Data (Session Specific) ---
+  // --- Recent Data ---
   const recentPayments = useMemo(() => isAdmin ? activeFees.filter(f => f.status === 'Paid').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5) : [], [activeFees, isAdmin]);
   const recentExpenses = useMemo(() => isAdmin ? activeExpenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5) : [], [activeExpenses, isAdmin]);
 
@@ -175,16 +189,16 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
-  const defaulters = useMemo(() => {
-      if (!isAdmin) return [];
-      return activeStudents.map(student => {
-          const studentFees = activeFees.filter(f => f.studentId === student.id);
-          const paid = studentFees.filter(f => f.status === 'Paid').reduce((sum, f) => sum + f.amount, 0);
-          const totalLiability = (student.totalAgreedFees || 0) + (student.backLogs || 0);
-          const due = totalLiability - paid;
-          return { ...student, due };
-      }).filter(s => s.due > 0).sort((a, b) => b.due - a.due).slice(0, 10);
-  }, [activeStudents, activeFees, isAdmin]);
+  const getMethodIcon = (method?: string) => {
+    switch(method) {
+        case 'Cash': return '💵';
+        case 'UPI': return '📱';
+        case 'Online': return '🌐';
+        case 'Bank Transfer': return '🏦';
+        case 'Cheque': return '🎫';
+        default: return '💰';
+    }
+  };
 
   // --- Slider State & Logic ---
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -229,16 +243,11 @@ const Dashboard: React.FC<DashboardProps> = ({
     }
   };
 
-  // --- Handlers for Defaulters ---
-  const handleCallParent = (phone: string) => {
-      window.location.href = `tel:${phone}`;
-  };
-
   const handleSendReminder = (student: any) => {
-      const message = `Hello, this is a reminder from ${data.schoolProfile.name} regarding the pending fees for ${student.name} (Class ${student.grade}). The current outstanding balance is ${currency}${student.due.toLocaleString()}. Please clear it at your earliest convenience. Thank you!`;
-      const encodedMsg = encodeURIComponent(message);
-      // Open WhatsApp link
-      window.open(`https://wa.me/${student.phone.replace(/[^0-9]/g, '')}?text=${encodedMsg}`, '_blank');
+    if (!student.phone) return;
+    const message = `🔔 *FEE REMINDER* 🔔\n\nDear Parent,\nThis is a reminder regarding the pending fees for *${student.name}* (Class: ${student.grade}).\n\n💰 *Due Amount:* ${currency}${student.due.toLocaleString()}\n📅 *Session:* ${student.session || data.schoolProfile.currentSession}\n\nPlease clear the outstanding balance soon.\n\nRegards,\n*${data.schoolProfile.name}*`;
+    const encodedMsg = encodeURIComponent(message);
+    window.open(`https://wa.me/${student.phone.replace(/[^0-9]/g, '')}?text=${encodedMsg}`, '_blank');
   };
 
   return (
@@ -254,7 +263,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </header>
 
-      {/* --- ENHANCED PREMIUM SCHOOL PROFILE CARD --- */}
+      {/* --- PREMIUM SCHOOL PROFILE CARD --- */}
       <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden relative group transition-all duration-500 animate-scale-in" style={{ animationDelay: '100ms', animationFillMode: 'backwards' }}>
           <div className="h-56 relative overflow-hidden group">
               {data.schoolProfile.banner ? (
@@ -307,7 +316,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5 mt-6 bg-slate-50/50 rounded-[2rem] border border-slate-100 backdrop-blur-sm shadow-inner text-left">
                         <div className="space-y-0.5 animate-fade-in" style={{ animationDelay: '500ms', animationFillMode: 'backwards' }}>
                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> School Address
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Address
                             </p>
                             <p className="text-xs font-black text-slate-800 truncate" title={data.schoolProfile.address}>{data.schoolProfile.address || 'Not Provided'}</p>
                         </div>
@@ -319,7 +328,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                         <div className="space-y-0.5 animate-fade-in" style={{ animationDelay: '700ms', animationFillMode: 'backwards' }}>
                             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Contact Number
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Contact
                             </p>
                             <p className="text-xs font-black text-slate-800 truncate">{data.schoolProfile.contactNumber || 'No Contact'}</p>
                         </div>
@@ -342,7 +351,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
                 </div>
             ))}
-            
             <div className="absolute bottom-0 left-0 p-10 text-white w-full z-20 animate-slide-up" key={currentSlide}>
                 <div className="bg-indigo-600/20 backdrop-blur-md border border-white/10 px-4 py-1.5 rounded-full inline-block mb-4">
                     <span className="text-[10px] font-black uppercase tracking-widest">Gallery Spotlight</span>
@@ -350,14 +358,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <h3 className="text-4xl font-black mb-3 leading-tight tracking-tighter">{imageSlider.images[currentSlide]?.title}</h3>
                 <p className="text-lg opacity-80 font-medium text-slate-200 max-w-2xl line-clamp-2">{imageSlider.images[currentSlide]?.description}</p>
             </div>
-
             <div className="absolute bottom-10 right-10 z-30 flex gap-2">
                 {imageSlider.images.map((_, idx) => (
-                    <button 
-                        key={idx} 
-                        onClick={() => setCurrentSlide(idx)}
-                        className={`h-2 rounded-full transition-all duration-500 ${idx === currentSlide ? 'w-8 bg-indigo-500' : 'w-2 bg-white/40'}`}
-                    />
+                    <button key={idx} onClick={() => setCurrentSlide(idx)} className={`h-2 rounded-full transition-all duration-500 ${idx === currentSlide ? 'w-8 bg-indigo-500' : 'w-2 bg-white/40'}`}/>
                 ))}
             </div>
         </div>
@@ -372,40 +375,133 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <FinancialCard title={netProfit >= 0 ? "Net Profit" : "Net Loss"} rawValue={Math.abs(netProfit)} currency={currency} icon={netProfit >= 0 ? "📈" : "📉"} gradient={netProfit >= 0 ? "bg-gradient-to-br from-indigo-600 to-blue-800" : "bg-gradient-to-br from-red-800 to-red-950"} delay={300} subValue={netProfit >= 0 ? "Healthy Cashflow" : "Negative Margin"} />
             </div>
 
-            {/* --- TODAY HISTORY CARD --- */}
-            <div className="bg-white rounded-[2.5rem] p-6 shadow-xl border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6 animate-slide-up" style={{ animationDelay: '350ms' }}>
+            {/* --- TODAY HISTORY CARD - CLICK TO OPEN AUDIT MODAL --- */}
+            <div 
+                onClick={() => { setAuditDate(new Date().toISOString().split('T')[0]); setIsTodayLedgerOpen(true); }}
+                className="bg-white rounded-[2.5rem] p-6 shadow-xl border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6 animate-slide-up cursor-pointer hover:shadow-2xl hover:scale-[1.01] transition-all group" 
+                style={{ animationDelay: '350ms' }}
+            >
                 <div className="flex items-center gap-4 shrink-0">
-                    <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-indigo-100 animate-float">📅</div>
+                    <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-indigo-100 group-hover:rotate-12 transition-transform">📅</div>
                     <div>
-                        <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Today's Ledger</h3>
+                        <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight flex items-center gap-2">
+                            Audit Ledger 
+                            <span className="text-indigo-400 group-hover:translate-x-1 transition-transform">➜</span>
+                        </h3>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                            {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+                            Detailed Daily Financial Analysis
                         </p>
                     </div>
                 </div>
                 <div className="flex flex-1 gap-4 w-full">
-                    <div className="flex-1 bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex flex-col items-center justify-center group hover:bg-emerald-100 transition-all duration-300">
-                        <p className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.1em] mb-1">Today's Collection</p>
+                    <div className="flex-1 bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex flex-col items-center justify-center group-hover:bg-emerald-100 transition-all duration-300">
+                        <p className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.1em] mb-1">Today's Collections</p>
                         <p className="text-3xl font-black text-emerald-700 tracking-tighter">
-                            {currency}{todayCollection.toLocaleString()}
+                            {currency}{todayCollectionTotal.toLocaleString()}
                         </p>
                     </div>
-                    <div className="flex-1 bg-rose-50 p-4 rounded-2xl border border-rose-100 flex flex-col items-center justify-center group hover:bg-rose-100 transition-all duration-300">
+                    <div className="flex-1 bg-rose-50 p-4 rounded-2xl border border-rose-100 flex flex-col items-center justify-center group-hover:bg-rose-100 transition-all duration-300">
                         <p className="text-[9px] font-black text-rose-600 uppercase tracking-[0.1em] mb-1">Today's Expenses</p>
                         <p className="text-3xl font-black text-rose-700 tracking-tighter">
-                            {currency}{todayExpense.toLocaleString()}
+                            {currency}{todayExpenseTotal.toLocaleString()}
                         </p>
                     </div>
                 </div>
             </div>
 
+            {/* --- TOP 20 DUE FEES REGISTRY --- */}
+            <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-8 animate-slide-up" style={{ animationDelay: '380ms', animationFillMode: 'backwards' }}>
+                <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-xl font-black text-slate-800 flex items-center gap-3">
+                        <span className="p-2 bg-rose-100 text-rose-600 rounded-xl text-xl shadow-sm border border-rose-50">⏳</span>
+                        <span>Top 20 Due Fees Registry</span>
+                    </h3>
+                    <div className="px-4 py-1.5 bg-rose-50 border border-rose-100 rounded-full text-[10px] font-black text-rose-600 uppercase tracking-widest">Immediate Attention</div>
+                </div>
+
+                <div className="overflow-x-auto -mx-4 md:mx-0">
+                    <div className="inline-block min-w-full align-middle md:px-0">
+                        <div className="overflow-hidden border border-slate-100 rounded-2xl">
+                            <table className="min-w-full divide-y divide-slate-100">
+                                <thead className="bg-slate-50">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Student</th>
+                                        <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Class</th>
+                                        <th scope="col" className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Net Dues</th>
+                                        <th scope="col" className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Action Center</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-slate-50">
+                                    {topDefaulters.length > 0 ? topDefaulters.map((s, idx) => (
+                                        <tr key={s.id} className="hover:bg-slate-50 transition-colors group">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-100 border-2 border-white shadow-sm overflow-hidden flex items-center justify-center shrink-0">
+                                                        {s.photo ? <img src={s.photo} className="w-full h-full object-cover" /> : s.name.charAt(0)}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-black text-slate-800 truncate">{s.name}</p>
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase">{s.id}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">Class {s.grade}</span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className="text-sm font-black text-rose-600">{currency}{s.due.toLocaleString()}</span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <a 
+                                                        href={`tel:${s.phone}`}
+                                                        className="w-9 h-9 bg-white border border-slate-200 text-blue-600 rounded-xl flex items-center justify-center shadow-sm hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all active:scale-90"
+                                                        title="Call Guardian"
+                                                    >
+                                                        📞
+                                                    </a>
+                                                    <button 
+                                                        onClick={() => handleSendReminder(s)}
+                                                        className="w-9 h-9 bg-white border border-slate-200 text-emerald-600 rounded-xl flex items-center justify-center shadow-sm hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all active:scale-90"
+                                                        title="WhatsApp Reminder"
+                                                    >
+                                                        🔔
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => onViewStudentProfile?.(s.id)}
+                                                        className="w-9 h-9 bg-white border border-slate-200 text-indigo-600 rounded-xl flex items-center justify-center shadow-sm hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all active:scale-90"
+                                                        title="View Profile"
+                                                    >
+                                                        👤
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )) : (
+                                        <tr>
+                                            <td colSpan={4} className="px-6 py-12 text-center">
+                                                <div className="flex flex-col items-center">
+                                                    <span className="text-4xl mb-2">🎉</span>
+                                                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No Outstanding Dues Found</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* --- DISTRIBUTION SECTION --- */}
             <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 p-8 animate-slide-up" style={{ animationDelay: '400ms', animationFillMode: 'backwards' }}>
                 <div className="flex items-center justify-between mb-8">
                     <h3 className="text-xl font-black text-slate-800 flex items-center gap-3">
                         <span className="p-2 bg-indigo-100 text-indigo-600 rounded-xl text-xl shadow-sm border border-indigo-50 animate-float">📊</span>
                         <span>Student Distribution</span>
                     </h3>
-                    <div className="px-4 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">Available Classes</div>
+                    <div className="px-4 py-1.5 bg-slate-50 border border-slate-200 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Session</div>
                 </div>
 
                 <div className="flex flex-col lg:flex-row items-center justify-center gap-12">
@@ -436,11 +532,11 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 </div>
                             </div>
                         ))}
-                        {classStats.stats.length === 0 && <p className="col-span-full text-center text-slate-400 font-bold italic py-10">No students enrolled yet.</p>}
                     </div>
                 </div>
             </div>
 
+            {/* --- RECENT ACTIVITY GRID --- */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white rounded-[2rem] shadow-sm border border-slate-100 flex flex-col overflow-hidden animate-slide-up" style={{ animationDelay: '500ms', animationFillMode: 'backwards' }}>
                     <div className="p-6 pb-2 flex justify-between items-center">
@@ -490,103 +586,254 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                 </div>
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 animate-slide-up" style={{ animationDelay: '700ms', animationFillMode: 'backwards' }}>
-                    <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
-                        <div className="bg-red-50 p-4 border-b border-red-100 flex justify-between items-center">
-                            <h3 className="text-red-800 font-black flex items-center gap-2"><span>📢</span> Defaulters List ({currentSession})</h3>
-                            <span className="text-[10px] bg-white text-red-600 px-3 py-1 rounded-full font-black border border-red-100 shadow-sm uppercase animate-pulse">{defaulters.length} Due</span>
-                        </div>
-                        <div className="divide-y divide-slate-100 max-h-[350px] overflow-y-auto scrollbar-hide">
-                            {defaulters.map((student, idx) => (
-                                <div key={student.id} className="stagger-item p-4 hover:bg-red-50/30 transition-colors flex items-center justify-between gap-4" style={{ animationDelay: `${800 + (idx * 30)}ms` }}>
-                                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-sm border border-slate-200 overflow-hidden font-black text-slate-400 shrink-0">
-                                            {student.photo ? <img src={student.photo} className="w-full h-full object-cover" alt={student.name}/> : student.name.charAt(0)}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-xs font-black text-slate-800 leading-tight truncate">{student.name}</p>
-                                            <p className="text-[9px] text-slate-400 font-black uppercase">Class {student.grade}</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-3 shrink-0">
-                                        <div className="text-right">
-                                            <p className="text-xs font-black text-red-600">{currency}{student.due.toLocaleString()}</p>
-                                            <p className="text-[8px] text-red-400 font-black uppercase">Balance</p>
-                                        </div>
-                                        
-                                        <div className="flex gap-1.5 ml-2">
-                                            <button 
-                                                onClick={() => handleCallParent(student.phone)}
-                                                className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-sm border border-blue-100 hover:bg-blue-100 hover:scale-110 transition-all shadow-sm"
-                                                title="Call Parent"
-                                            >
-                                                📞
-                                            </button>
-                                            <button 
-                                                onClick={() => handleSendReminder(student)}
-                                                className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm border border-emerald-100 hover:bg-emerald-100 hover:scale-110 transition-all shadow-sm"
-                                                title="Send WhatsApp Reminder"
-                                            >
-                                                💬
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                            {defaulters.length === 0 && <div className="p-12 text-center text-slate-400 font-bold italic">Zero Defaulters in this session! 🎉</div>}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-6 animate-slide-up" style={{ animationDelay: '800ms', animationFillMode: 'backwards' }}>
-                    <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-6 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-bl-full -translate-y-2 translate-x-2 group-hover:scale-110 transition-transform"></div>
-                        <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2 relative z-10">
-                            <span className="animate-float">📈</span> Session Status
-                        </h3>
-                        <div className="space-y-4 relative z-10">
-                            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:scale-105 transition-transform">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-xl">🎓</span>
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Students</span>
-                                </div>
-                                <span className="font-black text-slate-800 text-lg">{activeStudents.length}</span>
-                            </div>
-                            <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 hover:scale-105 transition-transform">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Collection Rate</span>
-                                    <span className="text-xs font-black text-indigo-600">{collectionRate}%</span>
-                                </div>
-                                <div className="w-full h-2.5 bg-white rounded-full overflow-hidden shadow-inner">
-                                    <div className="h-full bg-indigo-600 rounded-full transition-all duration-1000 ease-out animate-bar-glow" style={{ width: `${collectionRate}%` }}></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-6 rounded-[2rem] shadow-xl relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                        <h3 className="text-lg font-black mb-6 flex items-center gap-2 relative z-10"><span className="animate-float">📅</span> Calendar</h3>
-                        <div className="flex items-center justify-between mb-6 relative z-10">
-                            <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">◀</button>
-                            <span className="font-black text-xs uppercase tracking-widest">{calendarDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
-                            <button onClick={() => changeMonth(1)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">▶</button>
-                        </div>
-                        <div className="grid grid-cols-7 text-center text-[8px] font-black opacity-40 mb-4 relative z-10">
-                            {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(d => <div key={d}>{d}</div>)}
-                        </div>
-                        <div className="grid grid-cols-7 text-center gap-1.5 text-[10px] font-bold relative z-10">
-                            {calendarDays.map((d, i) => (
-                                <div key={i} className={`aspect-square flex items-center justify-center rounded-lg transition-all ${d ? 'hover:bg-white/10 cursor-default hover:scale-110' : ''} ${d === new Date().getDate() && calendarDate.getMonth() === new Date().getMonth() ? 'bg-white text-indigo-900 shadow-lg scale-110 animate-pulse-subtle' : ''}`}>{d}</div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </div>
         </>
+      )}
+
+      {/* --- INSTITUTIONAL PORTAL (CALENDAR & QR) --- */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-slide-up" style={{ animationDelay: '700ms', animationFillMode: 'backwards' }}>
+          {/* Branded School Calendar */}
+          <div className="lg:col-span-8 bg-white rounded-[3rem] shadow-xl border border-slate-200 p-8 md:p-10 flex flex-col h-full relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 tobacco-none pointer-events-none transition-all duration-700 group-hover:scale-150"></div>
+                
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6 relative z-10">
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-3xl shadow-xl shadow-indigo-100 border border-indigo-400 animate-float">📅</div>
+                        <div>
+                            <h3 className="text-2xl font-black text-slate-800 tracking-tighter uppercase">{data.schoolProfile.name} Calendar</h3>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{calendarDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-[1.25rem] border border-slate-100 shadow-inner">
+                        <button onClick={() => changeMonth(-1)} className="w-10 h-10 bg-white hover:bg-indigo-600 hover:text-white rounded-xl transition-all text-indigo-600 font-black shadow-sm border border-slate-100 flex items-center justify-center">◀</button>
+                        <span className="font-black text-xs text-slate-600 px-4 min-w-[120px] text-center uppercase tracking-widest">{calendarDate.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</span>
+                        <button onClick={() => changeMonth(1)} className="w-10 h-10 bg-white hover:bg-indigo-600 hover:text-white rounded-xl transition-all text-indigo-600 font-black shadow-sm border border-slate-100 flex items-center justify-center">▶</button>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-7 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.25em] mb-6 relative z-10">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => <div key={d} className="py-2">{d}</div>)}
+                </div>
+                <div className="grid grid-cols-7 text-center gap-3 flex-1 relative z-10">
+                    {calendarDays.map((d, i) => {
+                        const isToday = d === new Date().getDate() && calendarDate.getMonth() === new Date().getMonth() && calendarDate.getFullYear() === new Date().getFullYear();
+                        return (
+                            <div 
+                                key={i} 
+                                className={`aspect-square flex items-center justify-center rounded-2xl text-base font-black transition-all group/day ${
+                                    d 
+                                    ? isToday 
+                                        ? 'bg-indigo-600 text-white shadow-2xl scale-110 ring-4 ring-indigo-100 animate-pulse-subtle z-10' 
+                                        : 'bg-white border border-slate-100 text-slate-600 hover:bg-slate-50 hover:border-indigo-200 hover:scale-105 cursor-pointer shadow-sm' 
+                                    : 'opacity-0 pointer-events-none'
+                                }`}
+                            >
+                                {d}
+                            </div>
+                        )
+                    })}
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest relative z-10">
+                    <span>Public Holidays: Nil</span>
+                    <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-indigo-600"></span> Current Day
+                    </span>
+                </div>
+          </div>
+
+          {/* Institutional QR Card */}
+          <div className="lg:col-span-4 bg-white rounded-[3rem] shadow-xl border border-slate-200 overflow-hidden flex flex-col group h-full transition-all duration-500 hover:shadow-2xl">
+              <div className="p-8 bg-slate-900 text-white relative h-32 flex flex-col justify-center overflow-hidden">
+                  <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+                  <div className="relative z-10">
+                      <h3 className="text-xl font-black uppercase tracking-tighter mb-1">Institutional Portal</h3>
+                      <p className="text-[9px] font-bold text-indigo-300 uppercase tracking-[0.2em] opacity-80">Scan for Official Profile</p>
+                  </div>
+              </div>
+              <div className="flex-1 p-8 flex flex-col items-center justify-center bg-slate-50/50">
+                  <div className="bg-white p-4 rounded-[2.5rem] shadow-2xl border-4 border-slate-100 group-hover:scale-105 transition-transform duration-700 relative mb-6">
+                       <div className="absolute inset-0 rounded-[2rem] border-2 border-indigo-600/20 animate-ping opacity-30 tobacco-none pointer-events-none"></div>
+                       <img 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`${data.schoolProfile.name}|${data.schoolProfile.address}|${data.schoolProfile.contactNumber}`)}`} 
+                          alt="School QR" 
+                          className="w-48 h-48 rounded-xl"
+                       />
+                  </div>
+                  <div className="text-center space-y-2">
+                      <h4 className="font-black text-slate-800 text-lg uppercase tracking-tight">{data.schoolProfile.name}</h4>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed px-4">
+                        Instant Digital Identity Verification for stakeholders and visitors.
+                      </p>
+                  </div>
+              </div>
+              <div className="p-6 bg-white border-t border-slate-100 flex flex-col gap-3">
+                  <button className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-3">
+                      <span>📤</span> Export Institution Info
+                  </button>
+                  <p className="text-[8px] text-center text-slate-300 font-bold uppercase tracking-[0.3em]">Institutional Verification core v2.0</p>
+              </div>
+          </div>
+      </div>
+
+      {/* --- FLOATING LEDGER AUDIT MODAL WITH DATE FILTER --- */}
+      {isTodayLedgerOpen && isAdmin && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[200] flex items-center justify-center p-4 animate-fade-in" onClick={() => setIsTodayLedgerOpen(false)}>
+              <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col animate-scale-in border border-white/20" onClick={e => e.stopPropagation()}>
+                  
+                  {/* Modal Header */}
+                  <div className="p-8 bg-gradient-to-r from-slate-900 to-indigo-950 text-white relative">
+                      <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+                      <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+                          <div>
+                              <div className="flex items-center gap-3 mb-2">
+                                  <span className="px-3 py-1 bg-emerald-500 text-white text-[10px] font-black rounded-full uppercase tracking-widest shadow-lg">Ledger Filter</span>
+                                  <span className="text-indigo-300 font-bold text-xs uppercase tracking-[0.2em]">{new Date(auditDate).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                              </div>
+                              <h2 className="text-4xl font-black tracking-tighter">Daily Audit Log</h2>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+                               {/* --- DATE FILTER INPUT --- */}
+                               <div className="relative group bg-white/5 p-2 rounded-2xl border border-white/10 flex items-center gap-3 hover:bg-white/10 transition-all">
+                                   <div className="pl-2 flex flex-col">
+                                       <span className="text-[8px] font-black text-indigo-300 uppercase tracking-widest">Select Audit Day</span>
+                                       <input 
+                                          type="date" 
+                                          className="bg-transparent border-none text-white font-black outline-none cursor-pointer text-sm [color-scheme:dark]"
+                                          value={auditDate}
+                                          onChange={(e) => setAuditDate(e.target.value)}
+                                       />
+                                   </div>
+                                   <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-xl shadow-lg">📅</div>
+                               </div>
+
+                               <div className="bg-white/10 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/10 flex flex-col items-end min-w-[150px]">
+                                   <span className="text-[8px] font-black text-indigo-300 uppercase tracking-widest">Audit Day Profit</span>
+                                   <span className={`text-2xl font-black ${auditNet >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                       {currency}{Math.abs(auditNet).toLocaleString()}
+                                   </span>
+                               </div>
+                               <button 
+                                  onClick={() => setIsTodayLedgerOpen(false)}
+                                  className="w-14 h-14 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-2xl transition-all border border-white/10 shadow-inner"
+                               >
+                                   ✕
+                               </button>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* Modal Content Scrollable */}
+                  <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                          
+                          {/* Collections Audit */}
+                          <div className="space-y-6">
+                              <div className="flex items-center justify-between">
+                                  <h3 className="text-xl font-black text-slate-800 flex items-center gap-3">
+                                      <span className="p-2.5 bg-emerald-100 text-emerald-600 rounded-2xl shadow-sm border border-emerald-50">📥</span>
+                                      <span>Collections <span className="opacity-40 ml-1 text-base">{new Date(auditDate).toLocaleDateString()}</span></span>
+                                  </h3>
+                                  <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">{auditCollections.length} Entries</span>
+                              </div>
+                              
+                              <div className="space-y-3">
+                                  {auditCollections.length > 0 ? auditCollections.map(fee => {
+                                      const student = data.students.find(s => s.id === fee.studentId);
+                                      return (
+                                          <div key={fee.id} className="p-4 bg-white rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-xl hover:scale-[1.02] transition-all animate-slide-up">
+                                              <div className="flex items-center gap-4">
+                                                  <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-xl shadow-inner border border-slate-100 group-hover:rotate-6 transition-transform">
+                                                      {getMethodIcon(fee.paymentMethod)}
+                                                  </div>
+                                                  <div>
+                                                      <p className="font-black text-slate-800 leading-tight truncate max-w-[150px]">{student?.name || 'Archived User'}</p>
+                                                      <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mt-1">{fee.type} • {fee.paymentMethod}</p>
+                                                  </div>
+                                              </div>
+                                              <div className="text-right">
+                                                  <p className="text-lg font-black text-emerald-600">{currency}{fee.amount.toLocaleString()}</p>
+                                                  <p className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter">Verified Entry</p>
+                                              </div>
+                                          </div>
+                                      );
+                                  }) : (
+                                      <div className="py-20 text-center border-4 border-dashed border-slate-100 rounded-[3rem] bg-white/50">
+                                          <span className="text-5xl block mb-4">🏜️</span>
+                                          <p className="text-slate-400 font-black uppercase tracking-widest">No Collections on this day</p>
+                                      </div>
+                                  )}
+                              </div>
+                          </div>
+
+                          {/* Expenses Audit */}
+                          <div className="space-y-6">
+                              <div className="flex items-center justify-between">
+                                  <h3 className="text-xl font-black text-slate-800 flex items-center gap-3">
+                                      <span className="p-2.5 bg-rose-100 text-rose-600 rounded-2xl shadow-sm border border-rose-50">📤</span>
+                                      <span>Expenses <span className="opacity-40 ml-1 text-base">{new Date(auditDate).toLocaleDateString()}</span></span>
+                                  </h3>
+                                  <span className="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">{auditExpenses.length} Entries</span>
+                              </div>
+
+                              <div className="space-y-3">
+                                  {auditExpenses.length > 0 ? auditExpenses.map(expense => (
+                                      <div key={expense.id} className="p-4 bg-white rounded-3xl border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-xl hover:scale-[1.02] transition-all animate-slide-up">
+                                          <div className="flex items-center gap-4">
+                                              <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-xl shadow-inner border border-slate-100 group-hover:rotate-6 transition-transform">
+                                                  {getExpenseIcon(expense.category)}
+                                              </div>
+                                              <div>
+                                                  <p className="font-black text-slate-800 leading-tight truncate max-w-[150px] uppercase tracking-tight">{expense.title}</p>
+                                                  <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest mt-1">{expense.category} • {expense.paymentMethod}</p>
+                                              </div>
+                                          </div>
+                                          <div className="text-right">
+                                              <p className="text-lg font-black text-rose-600">{currency}{expense.amount.toLocaleString()}</p>
+                                              <p className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter">Voucher Verified</p>
+                                          </div>
+                                      </div>
+                                  )) : (
+                                      <div className="py-20 text-center border-4 border-dashed border-slate-100 rounded-[3rem] bg-white/50">
+                                          <span className="text-5xl block mb-4">🍃</span>
+                                          <p className="text-slate-400 font-black uppercase tracking-widest">No Expenses on this day</p>
+                                      </div>
+                                  )}
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+                  {/* Modal Footer Summary */}
+                  <div className="p-8 bg-white border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-6">
+                      <div className="flex items-center gap-6">
+                          <div className="flex flex-col">
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Audit Day Total Inflow</span>
+                              <span className="text-2xl font-black text-emerald-600">{currency}{auditCollectionTotal.toLocaleString()}</span>
+                          </div>
+                          <div className="w-px h-10 bg-slate-100 hidden sm:block"></div>
+                          <div className="flex flex-col">
+                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Audit Day Total Outflow</span>
+                              <span className="text-2xl font-black text-rose-600">{currency}{auditExpenseTotal.toLocaleString()}</span>
+                          </div>
+                      </div>
+                      <div className="flex gap-4">
+                           <button 
+                                onClick={() => setAuditDate(new Date().toISOString().split('T')[0])}
+                                className="px-6 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all"
+                            >
+                                Back to Today
+                            </button>
+                           <button 
+                             onClick={() => setIsTodayLedgerOpen(false)}
+                             className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-2xl shadow-slate-900/20 hover:bg-slate-800 transition-all active:scale-95"
+                          >
+                              Close Daily Audit
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
       )}
 
       {!isAdmin && studentFinancials && (
@@ -649,25 +896,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                           {studentFinancials.history.length === 0 && <p className="text-center text-slate-400 italic">No payments recorded in this session</p>}
                       </div>
                   </div>
-              </div>
-
-              <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 p-10 flex flex-col h-full animate-slide-up" style={{ animationDelay: '500ms', animationFillMode: 'backwards' }}>
-                    <h3 className="text-2xl font-black text-slate-800 mb-10 flex items-center gap-3">
-                      <span className="animate-float">📅</span> School Calendar
-                    </h3>
-                    <div className="flex items-center justify-between mb-8">
-                        <button onClick={() => changeMonth(-1)} className="p-3 bg-slate-100 hover:bg-indigo-100 rounded-2xl transition-colors text-indigo-600 font-bold">◀</button>
-                        <span className="font-black text-xl text-slate-800 tracking-tighter uppercase">{calendarDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</span>
-                        <button onClick={() => changeMonth(1)} className="p-3 bg-slate-100 hover:bg-indigo-100 rounded-2xl transition-colors text-indigo-600 font-bold">▶</button>
-                    </div>
-                    <div className="grid grid-cols-7 text-center text-xs font-black text-slate-300 uppercase tracking-widest mb-6">
-                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => <div key={d}>{d}</div>)}
-                    </div>
-                    <div className="grid grid-cols-7 text-center gap-3 flex-1">
-                        {calendarDays.map((d, i) => (
-                            <div key={i} className={`aspect-square flex items-center justify-center rounded-2xl text-lg font-bold transition-all ${d ? 'hover:bg-indigo-50 cursor-default hover:scale-110' : ''} ${d === new Date().getDate() && calendarDate.getMonth() === new Date().getMonth() ? 'bg-indigo-600 text-white shadow-2xl scale-110 animate-pulse-subtle' : 'text-slate-700'}`}>{d}</div>
-                        ))}
-                    </div>
               </div>
           </div>
       )}
