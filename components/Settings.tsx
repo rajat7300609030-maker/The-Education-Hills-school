@@ -266,15 +266,18 @@ const Settings: React.FC<SettingsProps> = ({ settings, data, onUpdateSettings, o
             </div>
         </div>
 
-        <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px;">
+        <table style="width: 100%; border-collapse: separate; border-spacing: 0; font-size: 10px;">
             <thead>
                 <tr style="background: #f8fafc;">
-                    <th style="padding: 15px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: left; text-transform: uppercase; font-weight: 900; width: 80px;">S.No</th>
-                    <th style="padding: 15px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: left; text-transform: uppercase; font-weight: 900;">Student Name</th>
-                    <th style="padding: 15px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: left; text-transform: uppercase; font-weight: 900; width: 100px;">Class</th>
-                    <th style="padding: 15px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: left; text-transform: uppercase; font-weight: 900;">Parent/Guardian</th>
-                    <th style="padding: 15px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: left; text-transform: uppercase; font-weight: 900;">Contact No.</th>
-                    <th style="padding: 15px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: right; text-transform: uppercase; font-weight: 900; width: 120px;">Fee Status</th>
+                    <th style="padding: 12px 8px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: left; text-transform: uppercase; font-weight: 900; width: 30px;">S.No</th>
+                    <th style="padding: 12px 8px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: left; text-transform: uppercase; font-weight: 900;">Student Name</th>
+                    <th style="padding: 12px 8px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: left; text-transform: uppercase; font-weight: 900; width: 60px;">Class</th>
+                    <th style="padding: 12px 8px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: left; text-transform: uppercase; font-weight: 900;">Parent</th>
+                    <th style="padding: 12px 8px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: left; text-transform: uppercase; font-weight: 900; width: 90px;">Contact</th>
+                    <th style="padding: 12px 8px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: right; text-transform: uppercase; font-weight: 900; width: 80px;">Total Fees</th>
+                    <th style="padding: 12px 8px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: right; text-transform: uppercase; font-weight: 900; width: 80px;">Paid Fees</th>
+                    <th style="padding: 12px 8px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: right; text-transform: uppercase; font-weight: 900; width: 80px;">Due Fees</th>
+                    <th style="padding: 12px 8px; border-bottom: 2px solid #e2e8f0; color: #1e293b; text-align: right; text-transform: uppercase; font-weight: 900; width: 80px;">Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -285,15 +288,19 @@ const Settings: React.FC<SettingsProps> = ({ settings, data, onUpdateSettings, o
                     const due = totalLiability - paid;
                     const statusText = due <= 0 ? 'CLEARED' : 'PENDING';
                     const statusColor = due <= 0 ? '#10b981' : '#f43f5e';
+                    const currency = data.settings.currency === 'INR' ? '₹' : data.settings.currency === 'USD' ? '$' : data.settings.currency === 'EUR' ? '€' : data.settings.currency === 'GBP' ? '£' : data.settings.currency;
 
                     return `
                         <tr style="background: ${idx % 2 === 0 ? '#ffffff' : '#fcfdfe'}; transition: background 0.2s;">
-                            <td style="padding: 12px 15px; border-bottom: 1px solid #f1f5f9; font-weight: 800; color: #64748b;">${idx + 1}</td>
-                            <td style="padding: 12px 15px; border-bottom: 1px solid #f1f5f9; font-weight: 900; color: #1e293b; font-size: 15px;">${s.name}</td>
-                            <td style="padding: 12px 15px; border-bottom: 1px solid #f1f5f9; font-weight: 700; color: #4338ca;">${s.grade}</td>
-                            <td style="padding: 12px 15px; border-bottom: 1px solid #f1f5f9; font-weight: 600; color: #475569;">${s.parentName}</td>
-                            <td style="padding: 12px 15px; border-bottom: 1px solid #f1f5f9; font-weight: 700; color: #475569; font-family: monospace;">${s.phone || 'N/A'}</td>
-                            <td style="padding: 12px 15px; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 900; color: ${statusColor};">${statusText}</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; font-weight: 800; color: #64748b;">${idx + 1}</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; font-weight: 900; color: #1e293b; font-size: 12px;">${s.name}</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; font-weight: 700; color: #4338ca;">${s.grade}</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; font-weight: 600; color: #475569;">${s.parentName}</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; font-weight: 700; color: #475569; font-family: monospace;">${s.phone || 'N/A'}</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 700; color: #1e293b;">${currency}${totalLiability.toLocaleString()}</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 700; color: #10b981;">${currency}${paid.toLocaleString()}</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 700; color: #f43f5e;">${currency}${due.toLocaleString()}</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 900; color: ${statusColor};">${statusText}</td>
                         </tr>
                     `;
                 }).join('')}

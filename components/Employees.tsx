@@ -90,10 +90,18 @@ const Employees: React.FC<EmployeesProps> = ({ employees, currency, onAddEmploye
           <p className="text-slate-500 font-medium">Manage staff, faculty, and payroll profiles.</p>
         </div>
         <button 
-          onClick={() => setIsFormOpen(true)}
-          className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
+          onClick={() => isFormOpen && !editingId ? resetForm() : setIsFormOpen(true)}
+          className={`px-6 py-3 rounded-2xl font-bold shadow-lg transition-all active:scale-95 flex items-center gap-2 ${
+            isFormOpen && !editingId 
+            ? 'bg-slate-800 text-white shadow-slate-200' 
+            : 'bg-indigo-600 text-white shadow-indigo-100 hover:bg-indigo-700'
+          }`}
         >
-          <span>➕</span> Add Employee
+          {isFormOpen && !editingId ? (
+            <><span>✖️</span> Close Form</>
+          ) : (
+            <><span>➕</span> Add New Employee</>
+          )}
         </button>
       </header>
 
@@ -221,7 +229,13 @@ const Employees: React.FC<EmployeesProps> = ({ employees, currency, onAddEmploye
               <div className="col-span-full py-32 bg-slate-50 border-4 border-dashed border-slate-200 rounded-[3rem] flex flex-col items-center justify-center text-slate-400">
                   <span className="text-6xl mb-4">👥</span>
                   <p className="font-black text-xl uppercase tracking-widest">No Staff Found</p>
-                  <p className="text-sm font-bold opacity-60 mt-2">Start by adding your first employee.</p>
+                  <p className="text-sm font-bold opacity-60 mt-2 mb-6">Start by adding your first employee.</p>
+                  <button 
+                    onClick={() => setIsFormOpen(true)}
+                    className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
+                  >
+                    <span>✨</span> Register New Employee
+                  </button>
               </div>
           )}
       </div>
