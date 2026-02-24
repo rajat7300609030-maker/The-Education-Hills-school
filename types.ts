@@ -76,6 +76,7 @@ export interface ExpenseRecord {
   category: 'Salary' | 'Maintenance' | 'Utilities' | 'Supplies' | 'Events' | 'Other';
   paymentMethod: 'Cash' | 'Bank Transfer' | 'Card' | 'Cheque';
   description?: string;
+  employeeId?: string;
   isDeleted: boolean;
   deletedAt?: string;
   session?: string;

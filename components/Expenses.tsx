@@ -8,9 +8,19 @@ interface ExpensesProps {
   onAddExpense: (expense: Omit<ExpenseRecord, 'id' | 'isDeleted'>) => void;
   onEditExpense: (expense: ExpenseRecord) => void;
   onDeleteExpense: (id: string) => void;
+  initialFormData?: Partial<Omit<ExpenseRecord, 'id' | 'isDeleted'>>;
+  onClearInitialData?: () => void;
 }
 
-const Expenses: React.FC<ExpensesProps> = ({ expenses, currency, onAddExpense, onEditExpense, onDeleteExpense }) => {
+const Expenses: React.FC<ExpensesProps> = ({ 
+  expenses, 
+  currency, 
+  onAddExpense, 
+  onEditExpense, 
+  onDeleteExpense,
+  initialFormData,
+  onClearInitialData
+}) => {
   // --- State ---
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [activeExpenseId, setActiveExpenseId] = useState<string | null>(null);
@@ -30,8 +40,28 @@ const Expenses: React.FC<ExpensesProps> = ({ expenses, currency, onAddExpense, o
     category: 'Supplies' as ExpenseRecord['category'],
     paymentMethod: 'Cash' as ExpenseRecord['paymentMethod'],
     date: new Date().toISOString().split('T')[0],
-    description: ''
+    description: '',
+    employeeId: undefined as string | undefined
   });
+
+  // Handle Initial Form Data
+  React.useEffect(() => {
+    if (initialFormData) {
+      setFormData(prev => ({
+        ...prev,
+        ...initialFormData,
+        title: initialFormData.title || prev.title,
+        amount: initialFormData.amount ?? prev.amount,
+        category: initialFormData.category || prev.category,
+        paymentMethod: initialFormData.paymentMethod || prev.paymentMethod,
+        date: initialFormData.date || prev.date,
+        description: initialFormData.description || prev.description,
+        employeeId: initialFormData.employeeId
+      }));
+      setIsFormOpen(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [initialFormData]);
 
   const categories = ['Salary', 'Maintenance', 'Utilities', 'Supplies', 'Events', 'Other'];
 
@@ -114,9 +144,11 @@ const Expenses: React.FC<ExpensesProps> = ({ expenses, currency, onAddExpense, o
         category: 'Supplies',
         paymentMethod: 'Cash',
         date: new Date().toISOString().split('T')[0],
-        description: ''
+        description: '',
+        employeeId: undefined
     });
     setEditingId(null);
+    onClearInitialData?.();
   };
 
   const handleConfirmVoid = () => {
@@ -219,6 +251,22 @@ const Expenses: React.FC<ExpensesProps> = ({ expenses, currency, onAddExpense, o
                                             value={formData.title}
                                             onChange={e => setFormData({...formData, title: e.target.value})}
                                        />
+                                       {formData.employeeId && (
+                                           <div className="mt-2 p-3 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center gap-3 animate-fade-in">
+                                               <span className="text-xl">👤</span>
+                                               <div>
+                                                   <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Linked Employee Record</p>
+                                                   <p className="text-xs font-bold text-indigo-700">This expense is linked to an employee salary payment.</p>
+                                               </div>
+                                               <button 
+                                                   type="button"
+                                                   onClick={() => setFormData({...formData, employeeId: undefined})}
+                                                   className="ml-auto text-indigo-400 hover:text-indigo-600 font-bold text-xs"
+                                               >
+                                                   Unlink
+                                               </button>
+                                           </div>
+                                       )}
                                    </div>
                                    <div className="space-y-2">
                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Category Classification</label>

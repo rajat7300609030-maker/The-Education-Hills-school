@@ -7,13 +7,26 @@ interface EmployeesProps {
   onAddEmployee: (employee: Omit<Employee, 'id' | 'isDeleted'>) => void;
   onEditEmployee: (employee: Employee) => void;
   onDeleteEmployee: (id: string) => void;
+  onViewProfile: (id: string) => void;
+  onRecordPayment: (id: string) => void;
   onNotify?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-const Employees: React.FC<EmployeesProps> = ({ employees, currency, onAddEmployee, onEditEmployee, onDeleteEmployee, onNotify }) => {
+const Employees: React.FC<EmployeesProps> = ({ 
+  employees, 
+  currency, 
+  onAddEmployee, 
+  onEditEmployee, 
+  onDeleteEmployee, 
+  onViewProfile,
+  onRecordPayment,
+  onNotify 
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [formData, setFormData] = useState<Omit<Employee, 'id' | 'isDeleted'>>({
     name: '',
     role: 'Teacher',
@@ -190,41 +203,87 @@ const Employees: React.FC<EmployeesProps> = ({ employees, currency, onAddEmploye
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {activeEmployees.map((emp, idx) => (
-              <div key={emp.id} className="stagger-item group bg-white rounded-[2rem] p-6 border-2 border-slate-50 hover:border-indigo-100 shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden relative flex flex-col h-full" style={{ animationDelay: `${idx * 50}ms` }}>
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-bl-full -translate-y-6 translate-x-6 transition-transform group-hover:scale-110"></div>
-                  
-                  <div className="relative z-10 flex flex-col h-full">
-                      <div className="flex items-start gap-4 mb-6">
-                           <div className="w-16 h-16 rounded-[1.25rem] bg-slate-100 border-2 border-white shadow-md overflow-hidden flex items-center justify-center text-3xl shrink-0 group-hover:scale-110 transition-transform duration-500">
-                               {emp.photo ? <img src={emp.photo} className="w-full h-full object-cover" /> : emp.name.charAt(0)}
-                           </div>
-                           <div className="min-w-0 pr-4">
-                               <h4 className="font-black text-slate-800 text-lg leading-tight truncate">{emp.name}</h4>
-                               <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1">{emp.role}</p>
-                           </div>
-                      </div>
+          {activeEmployees.map((emp, idx) => {
+              const isActive = activeCardId === emp.id;
+              return (
+                <div 
+                    key={emp.id} 
+                    onClick={() => setActiveCardId(isActive ? null : emp.id)}
+                    className={`stagger-item group bg-white rounded-[2rem] p-6 border-2 transition-all duration-500 overflow-hidden relative flex flex-col cursor-pointer ${
+                        isActive ? 'border-indigo-500 shadow-2xl ring-4 ring-indigo-500/10 scale-[1.02] z-50' : 'border-slate-50 hover:border-indigo-100 shadow-lg hover:shadow-2xl'
+                    }`} 
+                    style={{ animationDelay: `${idx * 50}ms`, minHeight: isActive ? '320px' : 'auto' }}
+                >
+                    <div className={`absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-bl-full -translate-y-6 translate-x-6 transition-transform ${isActive ? 'scale-150 opacity-20' : 'group-hover:scale-110'}`}></div>
+                    
+                    <div className="relative z-10 flex flex-col h-full">
+                        <div className="flex items-start gap-4 mb-6">
+                             <div className={`w-16 h-16 rounded-[1.25rem] bg-slate-100 border-2 border-white shadow-md overflow-hidden flex items-center justify-center text-3xl shrink-0 transition-transform duration-500 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
+                                 {emp.photo ? <img src={emp.photo} className="w-full h-full object-cover" /> : emp.name.charAt(0)}
+                             </div>
+                             <div className="min-w-0 pr-4">
+                                 <h4 className="font-black text-slate-800 text-lg leading-tight truncate">{emp.name}</h4>
+                                 <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1">{emp.role}</p>
+                             </div>
+                        </div>
 
-                      <div className="space-y-3 mb-6 flex-1">
-                           <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-                               <span className="text-lg">📞</span> {emp.phone}
-                           </div>
-                           <div className="flex items-center gap-2 text-xs font-bold text-slate-500 truncate">
-                               <span className="text-lg">📧</span> {emp.email || 'No Email'}
-                           </div>
-                           <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 flex items-center justify-between mt-4">
-                               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Salary</span>
-                               <span className="font-black text-slate-800">{currency}{emp.salary.toLocaleString()}</span>
-                           </div>
-                      </div>
+                        {!isActive ? (
+                            <div className="space-y-3 mb-6 flex-1 animate-fade-in">
+                                <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                                    <span className="text-lg">📞</span> {emp.phone}
+                                </div>
+                                <div className="flex items-center gap-2 text-xs font-bold text-slate-500 truncate">
+                                    <span className="text-lg">📧</span> {emp.email || 'No Email'}
+                                </div>
+                                <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 flex items-center justify-between mt-4">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Salary</span>
+                                    <span className="font-black text-slate-800">{currency}{emp.salary.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex-1 flex flex-col justify-center gap-3 py-4 animate-scale-in">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); onViewProfile(emp.id); }}
+                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-indigo-50 text-indigo-600 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                    >
+                                        <span className="text-xl">👤</span>
+                                        View Profile
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); onRecordPayment(emp.id); }}
+                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-emerald-50 text-emerald-600 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                    >
+                                        <span className="text-xl">💸</span>
+                                        Payment
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); handleEdit(emp); }}
+                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-amber-50 text-amber-600 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:bg-amber-600 hover:text-white transition-all shadow-sm"
+                                    >
+                                        <span className="text-xl">✏️</span>
+                                        Edit
+                                    </button>
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); setEmployeeToDelete(emp); }}
+                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-rose-50 text-rose-600 rounded-2xl font-black uppercase text-[9px] tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                                    >
+                                        <span className="text-xl">🗑️</span>
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
-                      <div className="flex gap-2">
-                           <button onClick={() => handleEdit(emp)} className="flex-1 py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all">Edit</button>
-                           <button onClick={() => { if(confirm(`Delete ${emp.name}?`)) onDeleteEmployee(emp.id); }} className="px-3 py-3 bg-rose-50 text-rose-500 rounded-xl font-bold hover:bg-rose-500 hover:text-white transition-all">🗑️</button>
-                      </div>
-                  </div>
-              </div>
-          ))}
+                        {!isActive && (
+                            <div className="pt-4 border-t border-slate-50 flex justify-center">
+                                <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest animate-pulse">Click to view options</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+              );
+          })}
           {activeEmployees.length === 0 && (
               <div className="col-span-full py-32 bg-slate-50 border-4 border-dashed border-slate-200 rounded-[3rem] flex flex-col items-center justify-center text-slate-400">
                   <span className="text-6xl mb-4">👥</span>
@@ -239,6 +298,37 @@ const Employees: React.FC<EmployeesProps> = ({ employees, currency, onAddEmploye
               </div>
           )}
       </div>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {employeeToDelete && (
+          <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[150] flex items-center justify-center p-4 animate-fade-in" onClick={() => setEmployeeToDelete(null)}>
+              <div className="bg-white rounded-[3rem] p-10 w-full max-w-sm text-center shadow-2xl border border-white/20 animate-scale-in" onClick={e => e.stopPropagation()}>
+                  <div className="w-24 h-24 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center text-5xl mx-auto mb-6 shadow-xl shadow-rose-100/50">⚠️</div>
+                  <h3 className="text-2xl font-black text-slate-800 mb-3 leading-tight">Delete Employee?</h3>
+                  <p className="text-sm text-slate-500 mb-10 font-medium leading-relaxed px-4">
+                      Are you sure you want to delete <strong>{employeeToDelete.name}</strong>? This record will be moved to the Recycle Bin.
+                  </p>
+                  <div className="flex flex-col gap-3">
+                      <button 
+                        onClick={() => {
+                            onDeleteEmployee(employeeToDelete.id);
+                            setEmployeeToDelete(null);
+                            setActiveCardId(null);
+                        }} 
+                        className="w-full py-5 bg-rose-600 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-2xl shadow-rose-200 hover:bg-rose-700 transition-all active:scale-95"
+                      >
+                          Yes, Delete
+                      </button>
+                      <button 
+                        onClick={() => setEmployeeToDelete(null)} 
+                        className="w-full py-5 bg-slate-50 text-slate-500 font-black uppercase text-xs tracking-widest rounded-2xl hover:bg-slate-100 transition-all active:scale-95"
+                      >
+                          No, Keep Record
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };
