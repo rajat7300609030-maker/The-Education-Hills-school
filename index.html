@@ -70,6 +70,180 @@
       ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
       ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
       .stagger-item { animation: slideUp 0.5s ease-out forwards; opacity: 0; }
+
+      /* THEME SYSTEM */
+      :root {
+        --bg-main: #f8fafc;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --card-bg: #ffffff;
+        --card-border: #f1f5f9;
+        --accent: #4f46e5;
+        --accent-hover: #4338ca;
+      }
+
+      body.theme-dark {
+        --bg-main: #0f172a;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --card-bg: #1e293b;
+        --card-border: #334155;
+        --accent: #818cf8;
+        --accent-hover: #a5b4fc;
+      }
+
+      body.theme-vibrant {
+        --bg-main: #fdf2f8;
+        --text-main: #1e1b4b;
+        --text-muted: #701a75;
+        --card-bg: #ffffff;
+        --card-border: #fce7f3;
+        --accent: #db2777;
+        --accent-hover: #be185d;
+      }
+
+      body.theme-ocean {
+        --bg-main: #f0f9ff;
+        --text-main: #0c4a6e;
+        --text-muted: #0369a1;
+        --card-bg: #ffffff;
+        --card-border: #e0f2fe;
+        --accent: #0284c7;
+        --accent-hover: #0369a1;
+      }
+
+      body.theme-modern {
+        --bg-main: #fafafa;
+        --text-main: #171717;
+        --text-muted: #737373;
+        --card-bg: #ffffff;
+        --card-border: #e5e5e5;
+        --accent: #000000;
+        --accent-hover: #262626;
+      }
+
+      body.theme-glass {
+        --bg-main: #f1f5f9;
+        --text-main: #0f172a;
+        --text-muted: #475569;
+        --card-bg: rgba(255, 255, 255, 0.7);
+        --card-border: rgba(255, 255, 255, 0.3);
+        --accent: #4f46e5;
+        --accent-hover: #4338ca;
+      }
+
+      /* Global Overrides */
+      body[class*="theme-"] {
+        background-color: var(--bg-main) !important;
+        color: var(--text-main) !important;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+
+      body[class*="theme-"] .bg-white { background-color: var(--card-bg) !important; }
+      body[class*="theme-"] .bg-slate-50 { background-color: var(--bg-main) !important; }
+      body[class*="theme-"] .text-slate-900 { color: var(--text-main) !important; }
+      body[class*="theme-"] .text-slate-800 { color: var(--text-main) !important; }
+      body[class*="theme-"] .text-slate-700 { color: var(--text-muted) !important; }
+      body[class*="theme-"] .text-slate-600 { color: var(--text-muted) !important; }
+      body[class*="theme-"] .text-slate-500 { color: var(--text-muted) !important; opacity: 0.8; }
+      body[class*="theme-"] .border-slate-100, 
+      body[class*="theme-"] .border-slate-200 { border-color: var(--card-border) !important; }
+      
+      /* Accent Overrides */
+      body[class*="theme-"] .bg-indigo-600 { background-color: var(--accent) !important; }
+      body[class*="theme-"] .text-indigo-600 { color: var(--accent) !important; }
+      body[class*="theme-"] .border-indigo-600 { border-color: var(--accent) !important; }
+      body[class*="theme-"] .hover\:bg-indigo-700:hover { background-color: var(--accent-hover) !important; }
+      body[class*="theme-"] .bg-indigo-50 { background-color: color-mix(in srgb, var(--accent), transparent 90%) !important; }
+      body[class*="theme-"] .text-indigo-500 { color: var(--accent) !important; }
+      body[class*="theme-"] .bg-indigo-500 { background-color: var(--accent) !important; }
+
+      /* Status Overrides */
+      body.theme-dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.1) !important; }
+      body.theme-dark .text-emerald-600 { color: #34d399 !important; }
+      body.theme-dark .bg-rose-50 { background-color: rgba(244, 63, 94, 0.1) !important; }
+      body.theme-dark .text-rose-600 { color: #fb7185 !important; }
+      body.theme-dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.1) !important; }
+      body.theme-dark .text-amber-600 { color: #fbbf24 !important; }
+
+      /* Financial Card Gradients */
+      body.theme-modern .bg-gradient-to-br { 
+        background-image: none !important;
+        background-color: var(--accent) !important;
+      }
+      body.theme-modern .bg-gradient-to-br.from-emerald-600 { background-color: #16a34a !important; }
+      body.theme-modern .bg-gradient-to-br.from-rose-600 { background-color: #dc2626 !important; }
+      body.theme-modern .bg-gradient-to-br.from-orange-500 { background-color: #ea580c !important; }
+      body.theme-modern .bg-gradient-to-br.from-indigo-600 { background-color: #2563eb !important; }
+
+      /* Dark Specific Tweaks */
+      body.theme-dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.5) !important; }
+      body.theme-dark .shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5) !important; }
+      body.theme-dark .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important; }
+      body.theme-dark input, body.theme-dark select, body.theme-dark textarea {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+        border-color: #334155 !important;
+      }
+      body.theme-dark .bg-slate-100 { background-color: #334155 !important; }
+      body.theme-dark .text-slate-400 { color: #94a3b8 !important; }
+
+      /* Glass Specific Tweaks */
+      body.theme-glass {
+        background-image: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.1) 0, transparent 50%), 
+                          radial-gradient(at 50% 0%, rgba(168, 85, 247, 0.1) 0, transparent 50%), 
+                          radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.1) 0, transparent 50%);
+        background-attachment: fixed;
+      }
+      body.theme-glass .bg-white { 
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border-color: rgba(255, 255, 255, 0.2) !important;
+      }
+
+      /* Vibrant Specific Tweaks */
+      body.theme-vibrant {
+        background-image: radial-gradient(at 0% 0%, rgba(219, 39, 119, 0.05) 0, transparent 50%), 
+                          radial-gradient(at 100% 100%, rgba(79, 70, 229, 0.05) 0, transparent 50%);
+        background-attachment: fixed;
+      }
+
+      /* Ocean Specific Tweaks */
+      body.theme-ocean {
+        background-image: linear-gradient(to bottom right, #f0f9ff, #e0f2fe);
+        background-attachment: fixed;
+      }
+
+      /* Modern Specific Tweaks */
+      body.theme-modern * {
+        border-radius: 0 !important;
+        box-shadow: none !important;
+      }
+      body.theme-modern .rounded-full {
+        border-radius: 9999px !important;
+      }
+      body.theme-modern .border {
+        border-width: 2px !important;
+      }
+
+      /* Sidebar & TopBar Specific Overrides for Light Themes */
+      body.theme-modern header, body.theme-modern aside {
+        background-image: none !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border-color: #000000 !important;
+      }
+      body.theme-modern header *, body.theme-modern aside * {
+        color: #000000 !important;
+      }
+      body.theme-modern aside .bg-gradient-to-r {
+        background-image: none !important;
+        background-color: #000000 !important;
+        color: #ffffff !important;
+      }
+      body.theme-modern aside .bg-gradient-to-r * {
+        color: #ffffff !important;
+      }
     </style>
   <script type="importmap">
 {

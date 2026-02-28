@@ -125,7 +125,7 @@ export interface SliderImage {
 }
 
 export interface AppSettings {
-  theme: 'light' | 'dark';
+  theme: 'light' | 'dark' | 'vibrant' | 'glass' | 'modern' | 'ocean';
   fontSize: number;
   language: string;
   enableNotifications: boolean;
@@ -151,6 +151,16 @@ export interface AppSettings {
     lockTimeout: number;
     pin?: string;
     requirePinForExport?: boolean;
+  };
+  adsense?: {
+    enabled: boolean;
+    clientId: string;
+    units: {
+      id: string;
+      name: string;
+      unitId: string;
+      format: 'auto' | 'fluid' | 'rectangle' | 'vertical' | 'horizontal';
+    }[];
   };
 }
 

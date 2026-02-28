@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AppData, AppSettings, FeeRecord, ExpenseRecord, Student, ViewState, SliderImage } from '../types';
+import AdSenseUnit from './AdSenseUnit';
 
 interface DashboardProps {
   data: AppData;
@@ -259,6 +260,8 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const getExpenseIcon = (cat: string) => cat === 'Salary' ? '👔' : cat === 'Maintenance' ? '🛠️' : cat === 'Utilities' ? '💡' : cat === 'Supplies' ? '📦' : '🧾';
 
+  const adsense = data.settings.adsense;
+
   return (
     <div className="space-y-8 pb-12 animate-fade-in overflow-x-hidden">
       <header className="flex items-center justify-between">
@@ -271,6 +274,18 @@ const Dashboard: React.FC<DashboardProps> = ({
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">System Cloud Synced</span>
         </div>
       </header>
+
+      {/* --- ADSENSE TOP BANNER --- */}
+      {adsense?.enabled && adsense.clientId && adsense.units && adsense.units.length > 0 && (
+        <div className="animate-fade-in">
+          <AdSenseUnit 
+            clientId={adsense.clientId} 
+            unitId={adsense.units[0].unitId} 
+            format={adsense.units[0].format} 
+            className="w-full"
+          />
+        </div>
+      )}
 
       {/* --- 1ST POSITION: SCHOOL PROFILE CARD --- */}
       <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden relative group transition-all duration-500 animate-scale-in">
@@ -322,6 +337,18 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <FinancialCard title="Total Expenses" rawValue={totalExpenses} currency={currency} icon="💸" gradient="bg-gradient-to-br from-orange-500 to-orange-700" delay={200} subValue="Session maintenance costs" />
                 <FinancialCard title="Net Balance" rawValue={netProfit} currency={currency} icon="📈" gradient="bg-gradient-to-br from-indigo-600 to-blue-800" delay={300} subValue="Current profit index" />
             </div>
+
+            {/* --- ADSENSE MIDDLE BANNER --- */}
+            {adsense?.enabled && adsense.clientId && adsense.units && adsense.units.length > 1 && (
+              <div className="animate-fade-in">
+                <AdSenseUnit 
+                  clientId={adsense.clientId} 
+                  unitId={adsense.units[1].unitId} 
+                  format={adsense.units[1].format} 
+                  className="w-full"
+                />
+              </div>
+            )}
 
             {/* --- SESSION STATUS & STUDENT DISTRIBUTION & OUTFLOW --- */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

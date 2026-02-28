@@ -10,6 +10,7 @@ interface StudentProfileProps {
   onNavigateToFees: (studentId: string) => void;
   onNavigateToEdit: (studentId: string) => void;
   onDelete: (id: string) => void;
+  onUpdateStudent?: (student: Student) => void;
   onNotify?: (message: string, type: 'success' | 'error' | 'info') => void;
   userRole?: 'ADMIN' | 'STUDENT';
 }
@@ -23,6 +24,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
     onNavigateToFees,
     onNavigateToEdit,
     onDelete,
+    onUpdateStudent,
     onNotify,
     userRole = 'ADMIN'
 }) => {
@@ -220,6 +222,13 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
 
   const idStyles = getIDStyles();
 
+  const handleSessionChange = (newSession: string) => {
+    if (onUpdateStudent) {
+      onUpdateStudent({ ...student, session: newSession });
+      onNotify?.(`✅ Session updated to ${newSession}`, "success");
+    }
+  };
+
   const handleTCTabClick = () => {
     if (stats.dueAmount > 0) {
         onNotify?.("Please clear all dues to generate Transfer Certificate", "error");
@@ -304,7 +313,25 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                    <div className="space-y-4">
                        <DetailRow icon="📅" label="Enrollment Date" value={formatDate(student.enrollmentDate)} />
                        <DetailRow icon="🎂" label="Date of Birth" value={formatDate(student.dob)} />
-                       <DetailRow icon="🗓️" label="Academic Session" value={student.session || schoolData.currentSession} />
+                       <div className="flex items-start gap-3 text-sm">
+                           <span className="w-8 h-8 rounded-lg flex items-center justify-center text-lg border shrink-0 mt-0.5 bg-slate-50 border-slate-100">🗓️</span>
+                           <div className="min-w-0 flex-1">
+                               <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Academic Session</p>
+                               {isAdmin ? (
+                                   <select 
+                                       value={student.session || schoolData.currentSession}
+                                       onChange={(e) => handleSessionChange(e.target.value)}
+                                       className="w-full mt-1 p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500"
+                                   >
+                                       {schoolData.sessions.map(s => (
+                                           <option key={s} value={s}>{s}</option>
+                                       ))}
+                                   </select>
+                               ) : (
+                                   <p className="font-bold truncate text-slate-700">{student.session || schoolData.currentSession}</p>
+                               )}
+                           </div>
+                       </div>
                    </div>
               </div>
           </div>

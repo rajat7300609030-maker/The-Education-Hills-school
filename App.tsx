@@ -84,6 +84,11 @@ const INITIAL_DATA: AppData = {
         enableAppLock: true,
         lockTimeout: 0,
         pin: '0000'
+    },
+    adsense: {
+      enabled: false,
+      clientId: '',
+      units: []
     }
   }
 };
@@ -214,6 +219,30 @@ const App: React.FC = () => {
       document.documentElement.style.fontSize = `${data.settings.fontSize}%`;
     }
   }, [data.settings.fontSize]);
+
+  useEffect(() => {
+    const theme = data.settings.theme || 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    // Remove all theme classes first
+    const themeClasses = ['theme-light', 'theme-dark', 'theme-vibrant', 'theme-glass', 'theme-modern', 'theme-ocean'];
+    document.body.classList.remove(...themeClasses);
+    document.body.classList.add(`theme-${theme}`);
+  }, [data.settings.theme]);
+
+  // Dynamic AdSense Script Injection
+  useEffect(() => {
+    if (data.settings.adsense?.enabled && data.settings.adsense?.clientId) {
+      const scriptId = 'adsense-script';
+      if (!document.getElementById(scriptId)) {
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${data.settings.adsense.clientId}`;
+        script.async = true;
+        script.crossOrigin = 'anonymous';
+        document.head.appendChild(script);
+      }
+    }
+  }, [data.settings.adsense?.enabled, data.settings.adsense?.clientId]);
 
   useEffect(() => {
     const syncConfig = async () => {
@@ -433,7 +462,7 @@ const App: React.FC = () => {
            const studentIdToView = userRole === 'STUDENT' ? currentStudentId : selectedStudentId;
            const student = sessionStudents.find(s => s.id === studentIdToView);
            if (!student) return <div className="p-8 text-center text-slate-500 font-bold">Student not found.</div>;
-           return <StudentProfile student={student} fees={sessionFees} schoolData={data.schoolProfile} currency={currencySymbol} onBack={() => setCurrentView(userRole === 'STUDENT' ? ViewState.DASHBOARD : ViewState.STUDENTS)} onNavigateToFees={id => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }} onNavigateToEdit={(id) => { setStudentIdToEdit(id); setCurrentView(ViewState.STUDENTS); }} onDelete={(id) => { handleSoftDeleteStudent(id); setCurrentView(ViewState.STUDENTS); }} onNotify={showNotification} userRole={userRole} />;
+           return <StudentProfile student={student} fees={sessionFees} schoolData={data.schoolProfile} currency={currencySymbol} onBack={() => setCurrentView(userRole === 'STUDENT' ? ViewState.DASHBOARD : ViewState.STUDENTS)} onNavigateToFees={id => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }} onNavigateToEdit={(id) => { setStudentIdToEdit(id); setCurrentView(ViewState.STUDENTS); }} onDelete={(id) => { handleSoftDeleteStudent(id); setCurrentView(ViewState.STUDENTS); }} onUpdateStudent={handleEditStudent} onNotify={showNotification} userRole={userRole} />;
         }
       case ViewState.PARENT_PROFILE:
         {
