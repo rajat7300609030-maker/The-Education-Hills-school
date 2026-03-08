@@ -129,7 +129,7 @@ const TopBar: React.FC<TopBarProps> = ({
                 <h4 className="font-black text-slate-800 uppercase tracking-widest text-xs">Alerts & Logs</h4>
                 <button onClick={() => setIsNotificationOpen(false)} className="text-slate-400 font-bold hover:text-slate-600">✕</button>
               </div>
-              <div className="max-h-[350px] overflow-y-auto scrollbar-hide divide-y divide-slate-50">
+              <div className="max-h-[350px] overflow-y-auto divide-y divide-slate-50">
                 {notifications.length > 0 ? notifications.slice(0, 8).map((n) => (
                   <div key={n.id} className="p-4 hover:bg-slate-50 transition-colors flex gap-3">
                     <span className="text-xl shrink-0">{getNotificationIcon(n.type)}</span>

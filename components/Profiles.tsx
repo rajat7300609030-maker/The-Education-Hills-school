@@ -168,7 +168,7 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
       
       const image = canvas.toDataURL("image/png", 1.0);
       const link = document.createElement('a');
-      const safeName = uData.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const safeName = (uData.name || '').replace(/[^a-z0-9]/gi, '_').toLowerCase();
       link.href = image;
       link.download = `ID_Card_${safeName}_${uData.userId}.png`;
       document.body.appendChild(link);
@@ -210,7 +210,7 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
           return;
         }
 
-        const safeName = uData.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const safeName = (uData.name || '').replace(/[^a-z0-9]/gi, '_').toLowerCase();
         const file = new File([blob], `ID_Card_${safeName}.png`, { type: 'image/png' });
 
         // Check if Web Share API supports file sharing

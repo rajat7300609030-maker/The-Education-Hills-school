@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Student, FeeRecord } from '../types';
+import { Student, FeeRecord, AppSettings } from '../types';
+import AdSenseUnit from './AdSenseUnit';
 import { submitToFormspree } from '../lib/formspree';
 
 interface StudentsProps {
@@ -7,6 +8,7 @@ interface StudentsProps {
   classes: string[];
   fees: FeeRecord[];
   currency: string;
+  settings: AppSettings;
   onAddStudent: (student: Omit<Student, 'id' | 'isDeleted'>) => void;
   onDeleteStudent: (id: string) => void;
   onEditStudent: (student: Student) => void;
@@ -26,6 +28,7 @@ const Students: React.FC<StudentsProps> = ({
     classes, 
     fees,
     currency,
+    settings,
     onAddStudent, 
     onDeleteStudent, 
     onEditStudent, 
@@ -245,6 +248,22 @@ const Students: React.FC<StudentsProps> = ({
 
   return (
     <div className="space-y-3 relative">
+      {settings.adsense?.enabled && settings.adsense.clientId && settings.adsense.units?.find(u => u.placement === 'student_list_top') && (
+        <div className="animate-fade-in mb-6">
+          {(() => {
+            const unit = settings.adsense.units.find(u => u.placement === 'student_list_top')!;
+            return (
+              <AdSenseUnit 
+                clientId={settings.adsense.clientId} 
+                unitId={unit.unitId} 
+                format={unit.format} 
+                testMode={settings.adsense.testMode}
+                className="w-full"
+              />
+            );
+          })()}
+        </div>
+      )}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="animate-fade-in">
           <h2 className="text-3xl font-bold text-slate-800">Students 🎓</h2>

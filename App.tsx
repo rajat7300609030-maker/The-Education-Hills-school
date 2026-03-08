@@ -88,6 +88,8 @@ const INITIAL_DATA: AppData = {
     adsense: {
       enabled: false,
       clientId: '',
+      autoAdsEnabled: false,
+      testMode: false,
       units: []
     }
   }
@@ -231,18 +233,38 @@ const App: React.FC = () => {
 
   // Dynamic AdSense Script Injection
   useEffect(() => {
-    if (data.settings.adsense?.enabled && data.settings.adsense?.clientId) {
+    const adsense = data.settings.adsense;
+    if (adsense?.enabled && adsense?.clientId) {
       const scriptId = 'adsense-script';
-      if (!document.getElementById(scriptId)) {
-        const script = document.createElement('script');
+      let script = document.getElementById(scriptId) as HTMLScriptElement;
+      
+      // Determine the correct script source
+      // If Auto Ads are enabled, we include the client ID in the URL as per modern AdSense recommendations
+      // This automatically enables Auto Ads without needing a separate adsbygoogle.push call
+      const baseUrl = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
+      const expectedSrc = adsense.autoAdsEnabled 
+        ? `${baseUrl}?client=${adsense.clientId}`
+        : baseUrl;
+
+      if (!script) {
+        script = document.createElement('script');
         script.id = scriptId;
-        script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${data.settings.adsense.clientId}`;
         script.async = true;
         script.crossOrigin = 'anonymous';
+        script.src = expectedSrc;
         document.head.appendChild(script);
+      } else if (script.src !== expectedSrc) {
+        // If the client ID or Auto Ads setting changed, update the script
+        // Note: Re-injecting the script might be necessary if the source changes significantly
+        script.src = expectedSrc;
       }
+
+      // We no longer call adsbygoogle.push({ enable_page_level_ads: true })
+      // because providing the 'client' parameter in the script URL is the modern
+      // and preferred way to enable Auto Ads, and it avoids the "Only one 
+      // 'enable_page_level_ads' allowed per page" error.
     }
-  }, [data.settings.adsense?.enabled, data.settings.adsense?.clientId]);
+  }, [data.settings.adsense?.enabled, data.settings.adsense?.clientId, data.settings.adsense?.autoAdsEnabled]);
 
   useEffect(() => {
     const syncConfig = async () => {
@@ -299,7 +321,7 @@ const App: React.FC = () => {
 
   const handleAddEmployee = async (employee: Omit<Employee, 'id' | 'isDeleted'>) => {
     const currentSession = data.schoolProfile.currentSession;
-    const nextNum = (data.employees.length > 0 ? Math.max(...data.employees.map(e => parseInt(e.id.replace(/\D/g, '')) || 0)) : 0) + 1;
+    const nextNum = (data.employees.length > 0 ? Math.max(...data.employees.map(e => parseInt((e.id || '').replace(/\D/g, '')) || 0)) : 0) + 1;
     const newId = `EMP${nextNum.toString().padStart(3, '0')}`;
     const newEmployee: Employee = { ...employee, id: newId, session: currentSession, isDeleted: false };
     setData(prev => ({ ...prev, employees: [...(prev.employees || []), newEmployee] }));
@@ -448,7 +470,7 @@ const App: React.FC = () => {
       case ViewState.DASHBOARD:
         return <Dashboard data={data} currency={currencySymbol} onUpdateSettings={handleUpdateSettings} onNavigateToFees={() => setCurrentView(ViewState.FEES)} onNavigateToExpenses={() => setCurrentView(ViewState.EXPENSES)} onViewStudentProfile={id => { setSelectedStudentId(id); setCurrentView(ViewState.STUDENT_PROFILE); }} onNavigateToSettings={() => setCurrentView(ViewState.SETTINGS)} onDeleteFee={handleDeleteFee} onDeleteExpense={handleDeleteExpense} userRole={userRole} currentStudentId={currentStudentId} />;
       case ViewState.STUDENTS:
-        return <Students students={sessionStudents} classes={data.classes} fees={sessionFees} currency={currencySymbol} onAddStudent={handleAddStudent} onEditStudent={handleEditStudent} onDeleteStudent={handleSoftDeleteStudent} onAddClass={(name) => setData(prev => ({ ...prev, classes: [...prev.classes, name] }))} onDeleteClass={(name) => setData(prev => ({ ...prev, classes: prev.classes.filter(c => c !== name) }))} onNavigateToFees={id => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }} onViewProfile={id => { setSelectedStudentId(id); setCurrentView(ViewState.STUDENT_PROFILE); }} onViewParent={s => { setSelectedParent({ name: s.parentName, phone: s.phone, address: s.address || '' }); setCurrentView(ViewState.PARENT_PROFILE); }} initialEditingId={studentIdToEdit} onClearEditingId={() => setStudentIdToEdit(null)} />;
+        return <Students students={sessionStudents} classes={data.classes} fees={sessionFees} currency={currencySymbol} settings={data.settings} onAddStudent={handleAddStudent} onEditStudent={handleEditStudent} onDeleteStudent={handleSoftDeleteStudent} onAddClass={(name) => setData(prev => ({ ...prev, classes: [...prev.classes, name] }))} onDeleteClass={(name) => setData(prev => ({ ...prev, classes: prev.classes.filter(c => c !== name) }))} onNavigateToFees={id => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }} onViewProfile={id => { setSelectedStudentId(id); setCurrentView(ViewState.STUDENT_PROFILE); }} onViewParent={s => { setSelectedParent({ name: s.parentName, phone: s.phone, address: s.address || '' }); setCurrentView(ViewState.PARENT_PROFILE); }} initialEditingId={studentIdToEdit} onClearEditingId={() => setStudentIdToEdit(null)} />;
       case ViewState.EMPLOYEES:
         return <Employees employees={sessionEmployees} currency={currencySymbol} onAddEmployee={handleAddEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={handleDeleteEmployee} onViewProfile={id => { setSelectedEmployeeId(id); setCurrentView(ViewState.EMPLOYEE_PROFILE); }} onRecordPayment={handleRecordEmployeePayment} onNotify={showNotification} />;
       case ViewState.EMPLOYEE_PROFILE:
@@ -477,7 +499,7 @@ const App: React.FC = () => {
       case ViewState.FEES:
         {
             const studentIdFilter = userRole === 'STUDENT' ? currentStudentId : selectedStudentId;
-            return <Fees fees={sessionFees} students={sessionStudents} classes={data.classes} feeCategories={data.feeCategories} schoolProfile={data.schoolProfile} currency={currencySymbol} onAddFee={handleAddFee} onUpdateFee={handleUpdateFee} onDeleteFee={handleDeleteFee} onUpdateFeeStatus={async (id, status) => { setData(prev => ({ ...prev, fees: prev.fees.map(f => f.id === id ? { ...f, status } : f) })); await supabase.from('fees').update({ status }).eq('id', id); }} initialStudentId={studentIdFilter} userRole={userRole} />;
+            return <Fees fees={sessionFees} students={sessionStudents} classes={data.classes} feeCategories={data.feeCategories} schoolProfile={data.schoolProfile} currency={currencySymbol} settings={data.settings} onAddFee={handleAddFee} onUpdateFee={handleUpdateFee} onDeleteFee={handleDeleteFee} onUpdateFeeStatus={async (id, status) => { setData(prev => ({ ...prev, fees: prev.fees.map(f => f.id === id ? { ...f, status } : f) })); await supabase.from('fees').update({ status }).eq('id', id); }} initialStudentId={studentIdFilter} userRole={userRole} />;
         }
       case ViewState.EXPENSES:
         return <Expenses expenses={sessionExpenses} currency={currencySymbol} onAddExpense={handleAddExpense} onEditExpense={async e => { setData(prev => ({ ...prev, expenses: prev.expenses.map(old => old.id === e.id ? e : old) })); await supabase.from('expenses').upsert(e); }} onDeleteExpense={handleDeleteExpense} initialFormData={initialExpenseData || undefined} onClearInitialData={() => setInitialExpenseData(null)} />;
@@ -502,10 +524,10 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
       {notification && <NotificationToast message={notification.message} type={notification.type} styleVariant={data.settings.notificationStyle} onClose={() => setNotification(null)} />}
-      <Sidebar currentView={currentView} onChangeView={view => { setCurrentView(view); if (userRole !== 'STUDENT') { setSelectedStudentId(null); setSelectedParent(null); } }} isCollapsed={isSidebarCollapsed} onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} schoolProfile={data.schoolProfile} userRole={userRole} onLogout={() => setIsLocked(true)} />
+      <Sidebar currentView={currentView} onChangeView={view => { setCurrentView(view); if (userRole !== 'STUDENT') { setSelectedStudentId(null); setSelectedParent(null); } }} isCollapsed={isSidebarCollapsed} onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} schoolProfile={data.schoolProfile} settings={data.settings} userRole={userRole} onLogout={() => setIsLocked(true)} />
       <main className="flex-1 overflow-hidden flex flex-col relative bg-slate-50">
         <TopBar currentView={currentView} user={data.userProfile} session={data.schoolProfile.currentSession} notifications={notificationHistory} onClearNotifications={handleClearNotifications} isSidebarCollapsed={isSidebarCollapsed} onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} onOpenProfile={() => setCurrentView(ViewState.USER_PROFILE)} userRole={userRole} />
-        <div className="flex-1 overflow-auto p-4 md:p-8 z-10 relative scrollbar-hide flex flex-col">
+        <div className="flex-1 overflow-auto p-4 md:p-8 z-10 relative flex flex-col">
             {dbSyncError && (
                 <div className="mb-6 p-6 bg-red-50 border-2 border-red-200 rounded-[2rem] shadow-xl animate-bounce">
                     <h3 className="text-red-800 font-black flex items-center gap-2 mb-2">

@@ -1,5 +1,6 @@
 import React from 'react';
-import { ViewState, SchoolProfileData } from '../types';
+import { ViewState, SchoolProfileData, AppSettings } from '../types';
+import AdSenseUnit from './AdSenseUnit';
 
 interface SidebarProps {
   currentView: ViewState;
@@ -7,11 +8,12 @@ interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
   schoolProfile: SchoolProfileData;
+  settings: AppSettings;
   userRole?: 'ADMIN' | 'STUDENT';
   onLogout?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapsed, onToggle, schoolProfile, userRole = 'ADMIN', onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapsed, onToggle, schoolProfile, settings, userRole = 'ADMIN', onLogout }) => {
   const isAdmin = userRole === 'ADMIN';
   const isStudent = userRole === 'STUDENT';
 
@@ -146,7 +148,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
           )}
       </div>
 
-      <nav className="flex-1 px-3 space-y-2 overflow-y-auto overflow-x-hidden scrollbar-hide min-w-[16rem] pt-4 flex flex-col">
+      <nav className="flex-1 px-3 space-y-2 overflow-y-auto overflow-x-hidden min-w-[16rem] pt-4 flex flex-col">
         <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-2 h-5">
            Main
         </div>
@@ -161,6 +163,24 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
                 </div>
                 {bottomItems.map(renderButton)}
             </>
+        )}
+
+        {/* AdSense Sidebar Unit */}
+        {settings.adsense?.enabled && settings.adsense.clientId && settings.adsense.units?.find(u => u.placement === 'sidebar') && (
+          <div className="mt-4 px-2">
+            {(() => {
+              const unit = settings.adsense.units.find(u => u.placement === 'sidebar')!;
+              return (
+                <AdSenseUnit 
+                  clientId={settings.adsense.clientId} 
+                  unitId={unit.unitId} 
+                  format={unit.format} 
+                  testMode={settings.adsense.testMode}
+                  className="w-full"
+                />
+              );
+            })()}
+          </div>
         )}
 
         {/* Logout Button */}

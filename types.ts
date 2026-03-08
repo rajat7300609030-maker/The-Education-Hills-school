@@ -155,11 +155,14 @@ export interface AppSettings {
   adsense?: {
     enabled: boolean;
     clientId: string;
+    autoAdsEnabled?: boolean;
+    testMode?: boolean;
     units: {
       id: string;
       name: string;
       unitId: string;
       format: 'auto' | 'fluid' | 'rectangle' | 'vertical' | 'horizontal';
+      placement: 'dashboard_top' | 'dashboard_middle' | 'dashboard_bottom' | 'sidebar' | 'student_list_top' | 'fee_receipt_bottom';
     }[];
   };
 }

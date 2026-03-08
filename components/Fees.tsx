@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { FeeRecord, Student, SchoolProfileData } from '../types';
+import { FeeRecord, Student, SchoolProfileData, AppSettings } from '../types';
+import AdSenseUnit from './AdSenseUnit';
 import { submitToFormspree } from '../lib/formspree';
 
 interface FeesProps {
@@ -9,6 +10,7 @@ interface FeesProps {
   feeCategories: string[];
   schoolProfile: SchoolProfileData;
   currency: string;
+  settings: AppSettings;
   onAddFee: (fee: Omit<FeeRecord, 'id' | 'isDeleted'>) => void;
   onUpdateFee: (fee: FeeRecord) => void;
   onDeleteFee: (id: string) => void;
@@ -24,6 +26,7 @@ const Fees: React.FC<FeesProps> = ({
   feeCategories, 
   schoolProfile,
   currency,
+  settings,
   onAddFee, 
   onUpdateFee,
   onDeleteFee, 
@@ -695,7 +698,7 @@ const Fees: React.FC<FeesProps> = ({
              </div>
 
             {/* --- REDESIGNED FROSTED HISTORY CARDS WITH MAX NAME VISIBILITY --- */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-h-[800px] overflow-y-auto pr-3 scrollbar-hide py-4 px-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-h-[800px] overflow-y-auto pr-3 py-4 px-1">
                  {filteredHistory.length > 0 ? (
                     filteredHistory.map(fee => {
                         const student = students.find(s => s.id === fee.studentId);
@@ -919,6 +922,23 @@ const Fees: React.FC<FeesProps> = ({
                                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Scan to verify authenticity</p>
                                 <p className="text-[9px] text-slate-300 font-medium mt-4">Generated on {new Date().toLocaleString()}</p>
                             </div>
+
+                            {settings.adsense?.enabled && settings.adsense.clientId && settings.adsense.units?.find(u => u.placement === 'fee_receipt_bottom') && (
+                                <div className="mt-8 pt-6 border-t border-slate-100">
+                                    {(() => {
+                                        const unit = settings.adsense.units.find(u => u.placement === 'fee_receipt_bottom')!;
+                                        return (
+                                            <AdSenseUnit 
+                                                clientId={settings.adsense.clientId} 
+                                                unitId={unit.unitId} 
+                                                format={unit.format} 
+                                                testMode={settings.adsense.testMode}
+                                                className="w-full"
+                                            />
+                                        );
+                                    })()}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

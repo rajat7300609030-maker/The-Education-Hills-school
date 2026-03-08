@@ -37,7 +37,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
 
   // TC Customization State
   const [tcDetails, setTcDetails] = useState({
-    tcNumber: `TC/${new Date().getFullYear()}/${student.id.replace(/\D/g, '')}`,
+    tcNumber: `TC/${new Date().getFullYear()}/${(student.id || '').replace(/\D/g, '')}`,
     issueDate: new Date().toISOString().split('T')[0],
     reason: 'PERSONAL REASONS / HIGHER STUDIES',
     conduct: 'EXCELLENT',
@@ -110,7 +110,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
     }
     const message = `🔔 *FEE REMINDER* 🔔\n\nDear Parent,\nThis is a reminder regarding the pending fees for *${student.name}* (ID: ${student.id}, Class: ${student.grade}).\n\n💰 *Due Amount:* ${currency}${stats.dueAmount.toLocaleString()}\n📅 *Session:* ${student.session || schoolData.currentSession}\n\nPlease clear the outstanding balance at your earliest convenience.\n\nThank you,\n*${schoolData.name}*`;
     const encodedMsg = encodeURIComponent(message);
-    window.open(`https://wa.me/${student.phone.replace(/[^0-9]/g, '')}?text=${encodedMsg}`, '_blank');
+    window.open(`https://wa.me/${(student.phone || '').replace(/[^0-9]/g, '')}?text=${encodedMsg}`, '_blank');
     onNotify?.("🔔 Fee reminder generated!", "success");
   };
 
@@ -125,7 +125,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
     }
     const message = `✅ *FEE PAYMENT RECEIVED* ✅\n\nDear Parent,\nWe have successfully received a payment for *${student.name}*.\n\n💵 *Amount Received:* ${currency}${stats.lastPaymentAmount.toLocaleString()}\n🗓️ *Date:* ${formatDate(stats.lastPaymentDate)}\n📊 *Total Paid This Session:* ${currency}${stats.paidTotal.toLocaleString()}\n⏳ *Remaining Balance:* ${currency}${stats.dueAmount.toLocaleString()}\n\nThank you for your cooperation!\n\nRegards,\n*${schoolData.name}*`;
     const encodedMsg = encodeURIComponent(message);
-    window.open(`https://wa.me/${student.phone.replace(/[^0-9]/g, '')}?text=${encodedMsg}`, '_blank');
+    window.open(`https://wa.me/${(student.phone || '').replace(/[^0-9]/g, '')}?text=${encodedMsg}`, '_blank');
     onNotify?.("✅ Payment confirmation sent!", "success");
   };
 

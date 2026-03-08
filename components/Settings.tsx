@@ -11,10 +11,8 @@ interface SettingsProps {
 }
 
 const Settings: React.FC<SettingsProps> = ({ settings, data, onUpdateSettings, onLoadData, onFactoryReset, onNotify }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'security' | 'notifications' | 'fees' | 'slider' | 'data' | 'adsense'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'security' | 'notifications' | 'fees' | 'slider' | 'data'>('general');
   const [newSlide, setNewSlide] = useState({ url: '', title: '', description: '' });
-  const [newAdUnit, setNewAdUnit] = useState({ name: '', unitId: '', format: 'auto' as any });
-  const [isAddingAdUnit, setIsAddingAdUnit] = useState(false);
   const [isChangingPin, setIsChangingPin] = useState(false);
   const [pinData, setPinData] = useState({ current: '', new: '', confirm: '' });
   const [showPins, setShowPins] = useState({ current: false, new: false, confirm: false });
@@ -74,7 +72,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, data, onUpdateSettings, o
       const updatedUnits = [...(settings.adsense?.units || []), { ...newAdUnit, id: newId }];
       
       handleAdsenseConfigChange('units', updatedUnits);
-      setNewAdUnit({ name: '', unitId: '', format: 'auto' });
+      setNewAdUnit({ name: '', unitId: '', format: 'auto', placement: 'dashboard_top' });
       setIsAddingAdUnit(false);
       onNotify?.("💰 New AdSense unit added", "success");
   };
@@ -942,163 +940,6 @@ const Settings: React.FC<SettingsProps> = ({ settings, data, onUpdateSettings, o
       </div>
   );
 
-  const renderAdsense = () => (
-      <div className="space-y-8 animate-fade-in">
-          <div className="bg-gradient-to-r from-orange-600 to-amber-500 rounded-3xl p-6 text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div>
-                        <h3 className="text-2xl font-black mb-1">Google AdSense</h3>
-                        <p className="text-orange-100 text-xs font-medium">Monetize your portal by managing ad units and client IDs.</p>
-                    </div>
-                    <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-2xl backdrop-blur-md border border-white/10">
-                        <span className="text-xs font-bold uppercase tracking-widest">AdSense Status</span>
-                        <button 
-                            onClick={() => handleAdsenseConfigChange('enabled', !settings.adsense?.enabled)}
-                            className={`w-12 h-6 rounded-full relative transition-all duration-300 ${settings.adsense?.enabled ? 'bg-emerald-500' : 'bg-white/20'}`}
-                        >
-                            <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300 ${settings.adsense?.enabled ? 'left-6.5' : 'left-0.5'}`}></div>
-                        </button>
-                    </div>
-                </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-                    <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                        <span>🆔</span> Account Configuration
-                    </h4>
-                    <div className="space-y-4">
-                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Publisher Client ID (ca-pub-xxx)</label>
-                            <input 
-                                type="text" placeholder="ca-pub-xxxxxxxxxxxxxxxx"
-                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-orange-600 outline-none focus:ring-2 focus:ring-orange-500"
-                                value={settings.adsense?.clientId || ''}
-                                onChange={e => handleAdsenseConfigChange('clientId', e.target.value)}
-                            />
-                         </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center items-center text-center space-y-4">
-                    <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center text-3xl">💰</div>
-                    <div>
-                        <h4 className="font-bold text-slate-800">New Ad Unit</h4>
-                        <p className="text-xs text-slate-400">Add a specific ad slot ID to display ads in different sections.</p>
-                    </div>
-                    <button 
-                        onClick={() => setIsAddingAdUnit(true)}
-                        className="px-6 py-3 bg-orange-600 text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-orange-700 transition-all shadow-lg shadow-orange-100"
-                    >
-                        Create Ad Unit
-                    </button>
-                </div>
-          </div>
-
-          <div className="space-y-4">
-                <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-                    <span>📊</span> Active Ad Units ({(settings.adsense?.units || []).length})
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {(settings.adsense?.units || []).map((unit) => (
-                        <div key={unit.id} className="group relative bg-white rounded-3xl p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-all">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-xl">📢</div>
-                                <div className="min-w-0">
-                                    <h5 className="font-black text-slate-800 truncate">{unit.name}</h5>
-                                    <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">{unit.format} format</span>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit ID</p>
-                                <p className="text-xs font-bold text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 truncate">{unit.unitId}</p>
-                            </div>
-                            <button 
-                                onClick={() => handleRemoveAdUnit(unit.id)}
-                                className="absolute top-3 right-3 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                            >
-                                ✕
-                            </button>
-                        </div>
-                    ))}
-                    {(settings.adsense?.units || []).length === 0 && (
-                        <div className="col-span-full py-12 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center">
-                            <span className="text-4xl mb-4">📭</span>
-                            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">No Ad Units Configured</p>
-                        </div>
-                    )}
-                </div>
-          </div>
-
-          {isAddingAdUnit && (
-              <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-fade-in">
-                  <div className="bg-white rounded-[2.5rem] shadow-2xl p-8 w-full max-w-lg animate-scale-in border border-slate-100">
-                      <div className="flex justify-between items-center mb-8">
-                          <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Ad Unit Creator</h3>
-                          <button onClick={() => setIsAddingAdUnit(false)} className="text-slate-400 hover:text-slate-600 text-2xl transition-colors">✕</button>
-                      </div>
-                      
-                      <form onSubmit={handleAddAdUnit} className="space-y-6">
-                          <div className="space-y-2">
-                              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Unit Name (Internal)</label>
-                              <input 
-                                  type="text" placeholder="e.g. Dashboard Top Banner"
-                                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-orange-500"
-                                  value={newAdUnit.name}
-                                  onChange={e => setNewAdUnit({...newAdUnit, name: e.target.value})}
-                                  required
-                              />
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Ad Unit ID</label>
-                                  <input 
-                                      type="text" placeholder="1234567890"
-                                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-orange-500"
-                                      value={newAdUnit.unitId}
-                                      onChange={e => setNewAdUnit({...newAdUnit, unitId: e.target.value})}
-                                      required
-                                  />
-                              </div>
-                              <div className="space-y-2">
-                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Ad Format</label>
-                                  <select 
-                                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-orange-500"
-                                      value={newAdUnit.format}
-                                      onChange={e => setNewAdUnit({...newAdUnit, format: e.target.value as any})}
-                                  >
-                                      <option value="auto">Auto (Recommended)</option>
-                                      <option value="fluid">Fluid</option>
-                                      <option value="rectangle">Rectangle</option>
-                                      <option value="vertical">Vertical</option>
-                                      <option value="horizontal">Horizontal</option>
-                                  </select>
-                              </div>
-                          </div>
-
-                          <div className="flex gap-4 pt-4">
-                              <button 
-                                  type="button" onClick={() => setIsAddingAdUnit(false)}
-                                  className="flex-1 py-4 bg-slate-50 text-slate-500 font-bold rounded-2xl hover:bg-slate-100 transition-all"
-                              >
-                                  Cancel
-                              </button>
-                              <button 
-                                  type="submit"
-                                  className="flex-1 py-4 bg-orange-600 text-white font-bold rounded-2xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all active:scale-95"
-                              >
-                                  Save Ad Unit
-                              </button>
-                          </div>
-                      </form>
-                  </div>
-              </div>
-          )}
-      </div>
-  );
-
   const renderData = () => {
     const stats = [
         { label: 'Total Students', value: data.students.length, icon: '🎓', color: 'blue' },
@@ -1284,7 +1125,6 @@ const Settings: React.FC<SettingsProps> = ({ settings, data, onUpdateSettings, o
     { id: 'notifications', label: 'Notifications', icon: '🔔' },
     { id: 'fees', label: 'Fees & Rules', icon: '🏷️' },
     { id: 'slider', label: 'Gallery', icon: '🖼️' },
-    { id: 'adsense', label: 'AdSense', icon: '💰' },
     { id: 'data', label: 'System Data', icon: '💾' },
   ];
 
@@ -1309,7 +1149,6 @@ const Settings: React.FC<SettingsProps> = ({ settings, data, onUpdateSettings, o
               {activeTab === 'notifications' && renderNotifications()}
               {activeTab === 'fees' && renderFees()}
               {activeTab === 'slider' && renderSlider()}
-              {activeTab === 'adsense' && renderAdsense()}
               {activeTab === 'data' && renderData()}
           </div>
        </div>

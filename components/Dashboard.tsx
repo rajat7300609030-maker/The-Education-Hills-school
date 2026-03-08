@@ -245,7 +245,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     if (!student.phone) return;
     const message = `🔔 *FEE REMINDER* 🔔\n\nDear Parent,\nThis is a reminder regarding the pending fees for *${student.name}* (Class: ${student.grade}).\n\n💰 *Due Amount:* ${currency}${student.due.toLocaleString()}\n📅 *Session:* ${student.session || data.schoolProfile.currentSession}\n\nPlease clear the outstanding balance soon.\n\nRegards,\n*${data.schoolProfile.name}*`;
     const encodedMsg = encodeURIComponent(message);
-    window.open(`https://wa.me/${student.phone.replace(/[^0-9]/g, '')}?text=${encodedMsg}`, '_blank');
+    window.open(`https://wa.me/${(student.phone || '').replace(/[^0-9]/g, '')}?text=${encodedMsg}`, '_blank');
   };
 
   const getFeeIcon = (type: string) => {
@@ -276,14 +276,20 @@ const Dashboard: React.FC<DashboardProps> = ({
       </header>
 
       {/* --- ADSENSE TOP BANNER --- */}
-      {adsense?.enabled && adsense.clientId && adsense.units && adsense.units.length > 0 && (
+      {adsense?.enabled && adsense.clientId && adsense.units?.find(u => u.placement === 'dashboard_top') && (
         <div className="animate-fade-in">
-          <AdSenseUnit 
-            clientId={adsense.clientId} 
-            unitId={adsense.units[0].unitId} 
-            format={adsense.units[0].format} 
-            className="w-full"
-          />
+          {(() => {
+            const unit = adsense.units.find(u => u.placement === 'dashboard_top')!;
+            return (
+              <AdSenseUnit 
+                clientId={adsense.clientId} 
+                unitId={unit.unitId} 
+                format={unit.format} 
+                testMode={adsense.testMode}
+                className="w-full"
+              />
+            );
+          })()}
         </div>
       )}
 
@@ -339,14 +345,20 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             {/* --- ADSENSE MIDDLE BANNER --- */}
-            {adsense?.enabled && adsense.clientId && adsense.units && adsense.units.length > 1 && (
+            {adsense?.enabled && adsense.clientId && adsense.units?.find(u => u.placement === 'dashboard_middle') && (
               <div className="animate-fade-in">
-                <AdSenseUnit 
-                  clientId={adsense.clientId} 
-                  unitId={adsense.units[1].unitId} 
-                  format={adsense.units[1].format} 
-                  className="w-full"
-                />
+                {(() => {
+                  const unit = adsense.units.find(u => u.placement === 'dashboard_middle')!;
+                  return (
+                    <AdSenseUnit 
+                      clientId={adsense.clientId} 
+                      unitId={unit.unitId} 
+                      format={unit.format} 
+                      testMode={adsense.testMode}
+                      className="w-full"
+                    />
+                  );
+                })()}
               </div>
             )}
 
@@ -459,7 +471,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
 
                     {/* Grid List */}
-                    <div className="grid grid-cols-2 gap-3 max-h-[220px] overflow-y-auto pr-1 scrollbar-hide">
+                    <div className="grid grid-cols-2 gap-3 max-h-[220px] overflow-y-auto pr-1">
                         {studentDistribution.map((item) => (
                             <div key={item.grade} className="bg-slate-50/50 rounded-2xl p-3 border border-slate-100 flex flex-col justify-center gap-1 hover:bg-white hover:shadow-md transition-all">
                                 <div className="flex items-center gap-2">
@@ -704,7 +716,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <button onClick={() => setIsAuditModalOpen(false)} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-xl hover:bg-white/20 transition-all shadow-inner">✕</button>
                       </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-50/50 scrollbar-hide">
+                  <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-50/50">
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                            <div className="bg-emerald-100/50 border border-emerald-100 p-5 rounded-[2rem] flex flex-col items-center">
                                 <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Total Inflow</p>
@@ -804,6 +816,24 @@ const Dashboard: React.FC<DashboardProps> = ({
                    </div>
               </div>
           </div>
+      )}
+
+      {/* --- ADSENSE BOTTOM BANNER --- */}
+      {adsense?.enabled && adsense.clientId && adsense.units?.find(u => u.placement === 'dashboard_bottom') && (
+        <div className="animate-fade-in mt-12">
+          {(() => {
+            const unit = adsense.units.find(u => u.placement === 'dashboard_bottom')!;
+            return (
+              <AdSenseUnit 
+                clientId={adsense.clientId} 
+                unitId={unit.unitId} 
+                format={unit.format} 
+                testMode={adsense.testMode}
+                className="w-full"
+              />
+            );
+          })()}
+        </div>
       )}
     </div>
   );

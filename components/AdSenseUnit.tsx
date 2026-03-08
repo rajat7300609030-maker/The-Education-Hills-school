@@ -6,6 +6,7 @@ interface AdSenseUnitProps {
   format?: 'auto' | 'fluid' | 'rectangle' | 'vertical' | 'horizontal';
   style?: React.CSSProperties;
   className?: string;
+  testMode?: boolean;
 }
 
 declare global {
@@ -19,11 +20,14 @@ const AdSenseUnit: React.FC<AdSenseUnitProps> = ({
   unitId, 
   format = 'auto', 
   style = { display: 'block', minWidth: '250px' },
-  className = ""
+  className = "",
+  testMode = false
 }) => {
   const adRef = useRef<HTMLModElement>(null);
 
   useEffect(() => {
+    if (testMode) return;
+
     const pushAd = () => {
       try {
         // Check if the script is loaded and the element exists
@@ -52,6 +56,16 @@ const AdSenseUnit: React.FC<AdSenseUnitProps> = ({
 
     return () => clearTimeout(timer);
   }, [unitId]);
+
+  if (testMode) {
+    return (
+      <div className={`adsense-container overflow-hidden rounded-2xl bg-orange-50 border-2 border-dashed border-orange-200 flex flex-col items-center justify-center min-h-[100px] w-full p-4 ${className}`}>
+        <div className="text-orange-400 text-2xl mb-1">💰</div>
+        <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest">AdSense Test Mode</p>
+        <p className="text-[8px] text-orange-300 font-bold mt-1">Slot: {unitId}</p>
+      </div>
+    );
+  }
 
   return (
     <div className={`adsense-container overflow-hidden rounded-2xl bg-slate-50/50 border border-slate-100 flex items-center justify-center min-h-[100px] w-full ${className}`}>
