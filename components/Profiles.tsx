@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SchoolProfileData, UserProfileData, Student, FeeRecord, ExpenseRecord } from '../types';
+import { compressImage } from '../utils/imageUtils';
 
 interface ProfilesProps {
   type: 'SCHOOL' | 'USER';
@@ -12,6 +13,9 @@ interface ProfilesProps {
   onUpdateUser: (data: UserProfileData) => void;
   onNotify?: (message: string, type: 'success' | 'error' | 'info') => void;
   onNavigateToDashboard?: () => void;
+  syncStatus?: 'synced' | 'syncing' | 'error';
+  onManualSync?: () => Promise<void>;
+  session?: string;
 }
 
 // Helper Component defined outside to prevent re-rendering focus loss
@@ -79,9 +83,23 @@ const InputGroup = ({ label, value, onChange, icon, type = 'text', placeholder, 
     </div>
 );
 
-const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, students, fees, expenses, onUpdateSchool, onUpdateUser, onNotify, onNavigateToDashboard }) => {
-  const [sData, setSData] = useState(schoolData);
-  const [uData, setUData] = useState(userData);
+const Profiles: React.FC<ProfilesProps> = ({ 
+    type, 
+    schoolData, 
+    userData, 
+    students, 
+    fees, 
+    expenses, 
+    onUpdateSchool, 
+    onUpdateUser, 
+    onNotify, 
+    onNavigateToDashboard,
+    syncStatus = 'synced',
+    onManualSync,
+    session = '2024-25'
+}) => {
+  const [sData, setSData] = useState(schoolData || {} as SchoolProfileData);
+  const [uData, setUData] = useState(userData || {} as UserProfileData);
   
   // UI States
   const [schoolSection, setSchoolSection] = useState<string | null>(null);
@@ -100,11 +118,11 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
   }>({ isOpen: false, title: '', message: '', action: () => {} });
 
   useEffect(() => {
-    setSData(schoolData);
+    if (schoolData) setSData(schoolData);
   }, [schoolData]);
 
   useEffect(() => {
-    setUData(userData);
+    if (userData) setUData(userData);
   }, [userData]);
 
   // --- Helpers for Preview ---
@@ -328,8 +346,12 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setSData(prev => ({ ...prev, [field]: reader.result as string }));
+      reader.onloadend = async () => {
+        const maxWidth = field === 'banner' ? 1200 : 400;
+        const maxHeight = field === 'banner' ? 400 : 400;
+        const quality = field === 'banner' ? 0.6 : 0.7;
+        const compressed = await compressImage(reader.result as string, maxWidth, maxHeight, quality);
+        setSData(prev => ({ ...prev, [field]: compressed }));
       };
       reader.readAsDataURL(file);
     }
@@ -344,8 +366,9 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setUData(prev => ({ ...prev, photo: reader.result as string }));
+      reader.onloadend = async () => {
+        const compressed = await compressImage(reader.result as string, 400, 400, 0.7);
+        setUData(prev => ({ ...prev, photo: compressed }));
       };
       reader.readAsDataURL(file);
     }
@@ -366,8 +389,10 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
     const isAcademicsEditing = schoolSection === 'ACADEMICS';
     const isPoliciesEditing = schoolSection === 'POLICIES';
     const isAppearanceEditing = schoolSection === 'APPEARANCE';
+    const isNoticeEditing = schoolSection === 'NOTICE';
 
     const calculateCompleteness = () => {
+        if (!sData) return 0;
         const fields = [
             sData.name, sData.address, sData.contactEmail, sData.contactNumber, 
             sData.motto, sData.website, sData.logo, sData.banner, 
@@ -382,13 +407,50 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
       <div className="max-w-6xl mx-auto pb-20 animate-fade-in">
         <div className="mb-8 flex items-center justify-between">
             <div>
-                <h2 className="text-3xl font-black text-slate-800 tracking-tight">School Profile</h2>
+                <h2 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                  <span>School Profile</span>
+                  {session && (
+                    <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100 tracking-widest">
+                      {session}
+                    </span>
+                  )}
+                </h2>
                 <p className="text-slate-500 font-medium">Manage institutional identity and configurations.</p>
+            </div>
+            <div className="flex items-center gap-3">
+                {schoolSection && (
+                    <button 
+                        onClick={handleSchoolSave}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95"
+                    >
+                        <span>💾</span> Save All Changes
+                    </button>
+                )}
+                {syncStatus === 'syncing' && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse border border-indigo-100">
+                        <span className="w-2 h-2 bg-indigo-600 rounded-full animate-ping"></span>
+                        Cloud Syncing...
+                    </div>
+                )}
+                {syncStatus === 'synced' && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100">
+                        ✅
+                    </div>
+                )}
+                {syncStatus === 'error' && (
+                    <button 
+                        onClick={onManualSync}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-rose-100 hover:bg-rose-100 transition-colors"
+                    >
+                        <span className="w-2 h-2 bg-rose-500 rounded-full"></span>
+                        Sync Error - Retry
+                    </button>
+                )}
             </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            <div className="lg:col-span-4 bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden relative">
+            <div className="lg:col-span-4 bg-white rounded-[2rem] shadow-xl border border-indigo-100 ring-1 ring-indigo-500/5 overflow-hidden relative">
                 <div className="h-32 bg-slate-100 relative overflow-hidden group">
                     {sData.banner ? (
                         <img 
@@ -509,7 +571,7 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
             </div>
 
             <div className="lg:col-span-8 space-y-6">
-                <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-8 relative overflow-hidden">
+                <div className="bg-white rounded-[2rem] shadow-sm border border-indigo-100 ring-1 ring-indigo-500/5 p-8 relative overflow-hidden">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
                             <span className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">📜</span>
@@ -556,7 +618,7 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
                     )}
                 </div>
 
-                <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-8">
+                <div className="bg-white rounded-[2rem] shadow-sm border border-indigo-100 ring-1 ring-indigo-500/5 p-8">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
                             <span className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">📍</span>
@@ -617,7 +679,7 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
                     )}
                 </div>
 
-                <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-8">
+                <div className="bg-white rounded-[2rem] shadow-sm border border-indigo-100 ring-1 ring-indigo-500/5 p-8">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
                             <span className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center text-xl">📅</span>
@@ -702,7 +764,7 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
                     )}
                 </div>
 
-                <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-8">
+                <div className="bg-white rounded-[2rem] shadow-sm border border-indigo-100 ring-1 ring-indigo-500/5 p-8">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
                             <span className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl">🎨</span>
@@ -745,7 +807,7 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
                     )}
                 </div>
 
-                <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-8">
+                <div className="bg-white rounded-[2rem] shadow-sm border border-indigo-100 ring-1 ring-indigo-500/5 p-8">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-3">
                             <span className="w-10 h-10 rounded-xl bg-gray-50 text-gray-600 flex items-center justify-center text-xl">⚖️</span>
@@ -840,13 +902,50 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
         <div className="max-w-6xl mx-auto pb-20 animate-fade-in">
             <div className="mb-8 flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-black text-slate-800 tracking-tight">User Profile</h2>
+                    <h2 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                      <span>User Profile</span>
+                      {session && (
+                        <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100 tracking-widest">
+                          {session}
+                        </span>
+                      )}
+                    </h2>
                     <p className="text-slate-500 font-medium">Manage your personal information and account settings.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    {userSection && (
+                        <button 
+                            onClick={handleUserSave}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95"
+                        >
+                            <span>💾</span> Save All Changes
+                        </button>
+                    )}
+                    {syncStatus === 'syncing' && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse border border-indigo-100">
+                            <span className="w-2 h-2 bg-indigo-600 rounded-full animate-ping"></span>
+                            Cloud Syncing...
+                        </div>
+                    )}
+                    {syncStatus === 'synced' && (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100">
+                            ✅
+                        </div>
+                    )}
+                    {syncStatus === 'error' && (
+                        <button 
+                            onClick={onManualSync}
+                            className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-rose-100 hover:bg-rose-100 transition-colors"
+                        >
+                            <span className="w-2 h-2 bg-rose-500 rounded-full"></span>
+                            Sync Error - Retry
+                        </button>
+                    )}
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                <div className="lg:col-span-4 bg-white rounded-[2rem] shadow-xl border border-slate-200 overflow-hidden relative">
+                <div className="lg:col-span-4 bg-white rounded-[2rem] shadow-xl border border-indigo-100 ring-1 ring-indigo-500/5 overflow-hidden relative">
                     <div className="h-32 bg-gradient-to-br from-indigo-600 via-purple-600 to-fuchsia-600 relative overflow-hidden">
                         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `url("${SVG_TEXTURE}")` }}></div>
                         {!isEditingIdentity && (
@@ -909,7 +1008,7 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
                 </div>
 
                 <div className="lg:col-span-8 space-y-6">
-                    <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-8 relative overflow-hidden">
+                    <div className="bg-white rounded-[2rem] shadow-sm border border-indigo-100 ring-1 ring-indigo-500/5 p-8 relative overflow-hidden">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <span className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">👤</span>
@@ -936,7 +1035,7 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
                         )}
                     </div>
 
-                    <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-8">
+                    <div className="bg-white rounded-[2rem] shadow-sm border border-indigo-100 ring-1 ring-indigo-500/5 p-8">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <span className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">📞</span>
@@ -963,7 +1062,7 @@ const Profiles: React.FC<ProfilesProps> = ({ type, schoolData, userData, student
                         )}
                     </div>
 
-                    <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-8">
+                    <div className="bg-white rounded-[2rem] shadow-sm border border-indigo-100 ring-1 ring-indigo-500/5 p-8">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
                                 <span className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xl">🪪</span>

@@ -108,7 +108,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
         onNotify?.("❌ No phone number available for this student.", "error");
         return;
     }
-    const message = `🔔 *FEE REMINDER* 🔔\n\nDear Parent,\nThis is a reminder regarding the pending fees for *${student.name}* (ID: ${student.id}, Class: ${student.grade}).\n\n💰 *Due Amount:* ${currency}${stats.dueAmount.toLocaleString()}\n📅 *Session:* ${student.session || schoolData.currentSession}\n\nPlease clear the outstanding balance at your earliest convenience.\n\nThank you,\n*${schoolData.name}*`;
+    const message = `🔔 *FEE REMINDER* 🔔\n\nDear Parent,\nThis is a reminder regarding the pending fees for *${student.name}* (ID: ${student.id}, Class: ${student.grade}).\n\n💰 *Due Amount:* ${currency}${stats.dueAmount.toLocaleString()}\n📅 *Session:* ${student.session || schoolData?.currentSession}\n\nPlease clear the outstanding balance at your earliest convenience.\n\nThank you,\n*${schoolData?.name}*`;
     const encodedMsg = encodeURIComponent(message);
     window.open(`https://wa.me/${(student.phone || '').replace(/[^0-9]/g, '')}?text=${encodedMsg}`, '_blank');
     onNotify?.("🔔 Fee reminder generated!", "success");
@@ -123,7 +123,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
         onNotify?.("❌ No successful payments found to confirm.", "error");
         return;
     }
-    const message = `✅ *FEE PAYMENT RECEIVED* ✅\n\nDear Parent,\nWe have successfully received a payment for *${student.name}*.\n\n💵 *Amount Received:* ${currency}${stats.lastPaymentAmount.toLocaleString()}\n🗓️ *Date:* ${formatDate(stats.lastPaymentDate)}\n📊 *Total Paid This Session:* ${currency}${stats.paidTotal.toLocaleString()}\n⏳ *Remaining Balance:* ${currency}${stats.dueAmount.toLocaleString()}\n\nThank you for your cooperation!\n\nRegards,\n*${schoolData.name}*`;
+    const message = `✅ *FEE PAYMENT RECEIVED* ✅\n\nDear Parent,\nWe have successfully received a payment for *${student.name}*.\n\n💵 *Amount Received:* ${currency}${stats.lastPaymentAmount.toLocaleString()}\n🗓️ *Date:* ${formatDate(stats.lastPaymentDate)}\n📊 *Total Paid This Session:* ${currency}${stats.paidTotal.toLocaleString()}\n⏳ *Remaining Balance:* ${currency}${stats.dueAmount.toLocaleString()}\n\nThank you for your cooperation!\n\nRegards,\n*${schoolData?.name}*`;
     const encodedMsg = encodeURIComponent(message);
     window.open(`https://wa.me/${(student.phone || '').replace(/[^0-9]/g, '')}?text=${encodedMsg}`, '_blank');
     onNotify?.("✅ Payment confirmation sent!", "success");
@@ -348,7 +348,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                               <span className="p-2.5 bg-white/10 rounded-2xl text-2xl shadow-inner border border-white/10">💰</span>
                               <span>Fee Status Summary</span>
                           </h3>
-                          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 ml-14">Academic Session: {student.session || schoolData.currentSession}</p>
+                          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 ml-14">Academic Session: {student.session || schoolData?.currentSession}</p>
                       </div>
                       <div className="flex items-center gap-3">
                            <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border shadow-lg ${

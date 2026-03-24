@@ -13,6 +13,9 @@ interface RecycleBinProps {
   onHardDeleteFee: (id: string) => void;
   onHardDeleteExpense: (id: string) => void;
   onNotify?: (message: string, type: 'success' | 'error' | 'info') => void;
+  syncStatus?: 'synced' | 'syncing' | 'error';
+  onManualSync?: () => Promise<void>;
+  session?: string;
 }
 
 const RecycleBin: React.FC<RecycleBinProps> = ({ 
@@ -26,8 +29,22 @@ const RecycleBin: React.FC<RecycleBinProps> = ({
   onHardDeleteEmployee,
   onHardDeleteFee,
   onHardDeleteExpense,
-  onNotify
+  onNotify,
+  syncStatus = 'synced',
+  onManualSync,
+  session = '2024-25'
 }) => {
+  const [visibleBins, setVisibleBins] = useState<{ [key: string]: boolean }>({
+    students: false,
+    employees: false,
+    fees: false,
+    expenses: false
+  });
+
+  const toggleBin = (bin: string) => {
+    setVisibleBins(prev => ({ ...prev, [bin]: !prev[bin] }));
+  };
+
   const [confirmModal, setConfirmModal] = useState<{
       isOpen: boolean;
       title: string;
@@ -90,13 +107,20 @@ const RecycleBin: React.FC<RecycleBinProps> = ({
                 30-Day Auto Cleanup Active ⏱️
             </span>
         </div>
-        <h2 className="text-3xl font-black text-slate-800 tracking-tight">Recycle Bin</h2>
+        <h2 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+          <span>Recycle Bin</span>
+          {session && (
+            <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100 tracking-widest">
+              {session}
+            </span>
+          )}
+        </h2>
         <p className="text-slate-500 font-medium">Items are automatically purged 30 days after deletion.</p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-8">
         {/* Students Bin */}
-        <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden h-[500px] flex flex-col group/bin">
+        <div className={`bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden transition-all duration-500 flex flex-col group/bin ${visibleBins.students ? 'h-[500px]' : 'h-auto'}`}>
           <div className="p-6 bg-slate-50/50 border-b border-slate-100 flex justify-between items-center shrink-0">
              <div className="flex items-center gap-3">
                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shadow-inner border border-blue-100 group-hover/bin:rotate-12 transition-transform">🎓</div>
@@ -105,33 +129,41 @@ const RecycleBin: React.FC<RecycleBinProps> = ({
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{deletedStudents.length} Records</p>
                  </div>
              </div>
+             <button 
+                onClick={() => toggleBin('students')}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${visibleBins.students ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-white text-slate-400 border border-slate-200 hover:border-blue-400 hover:text-blue-600'}`}
+             >
+                {visibleBins.students ? '👁️' : '🙈'}
+             </button>
           </div>
-          <div className="divide-y divide-slate-50 overflow-y-auto flex-1 scrollbar-hide">
-            {deletedStudents.length > 0 ? deletedStudents.map(student => (
-              <div key={student.id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors animate-fade-in">
-                <div className="min-w-0 pr-2">
-                   <p className="font-black text-slate-800 truncate">{student.name}</p>
-                   <div className="flex items-center gap-2 mt-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">ID: {student.id}</p>
-                        <ExpiryBadge deletedAt={student.deletedAt} />
-                   </div>
+          {visibleBins.students && (
+            <div className="divide-y divide-slate-50 overflow-y-auto flex-1 animate-fade-in">
+              {deletedStudents.length > 0 ? deletedStudents.map(student => (
+                <div key={student.id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors animate-fade-in">
+                  <div className="min-w-0 pr-2">
+                     <p className="font-black text-slate-800 truncate">{student.name}</p>
+                     <div className="flex items-center gap-2 mt-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">ID: {student.id}</p>
+                          <ExpiryBadge deletedAt={student.deletedAt} />
+                     </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => handleAction("Restore Student?", `Bring ${student.name} back to active list?`, () => onRestoreStudent(student.id), 'restore', `${student.name} restored!`)} className="w-9 h-9 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="Restore">♻️</button>
+                    <button onClick={() => handleAction("Permanent Delete?", `Delete ${student.name} forever? This cannot be undone.`, () => onHardDeleteStudent(student.id), 'delete', `${student.name} purged!`)} className="w-9 h-9 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl border border-rose-100 hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="Purge">🗑️</button>
+                  </div>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <button onClick={() => handleAction("Restore Student?", `Bring ${student.name} back to active list?`, () => onRestoreStudent(student.id), 'restore', `${student.name} restored!`)} className="w-9 h-9 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="Restore">♻️</button>
-                  <button onClick={() => handleAction("Permanent Delete?", `Delete ${student.name} forever? This cannot be undone.`, () => onHardDeleteStudent(student.id), 'delete', `${student.name} purged!`)} className="w-9 h-9 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl border border-rose-100 hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="Purge">🗑️</button>
+              )) : (
+                <div className="h-full flex flex-col items-center justify-center text-slate-200 p-10 text-center">
+                    <span className="text-6xl mb-4">🍃</span>
+                    <p className="font-black text-sm uppercase tracking-widest opacity-50">Student bin is empty</p>
                 </div>
-              </div>
-            )) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-200 p-10 text-center">
-                  <span className="text-6xl mb-4">🍃</span>
-                  <p className="font-black text-sm uppercase tracking-widest opacity-50">Student bin is empty</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Employees Bin */}
-        <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden h-[500px] flex flex-col group/bin">
+        <div className={`bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden transition-all duration-500 flex flex-col group/bin ${visibleBins.employees ? 'h-[500px]' : 'h-auto'}`}>
           <div className="p-6 bg-slate-50/50 border-b border-slate-100 flex justify-between items-center shrink-0">
              <div className="flex items-center gap-3">
                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shadow-inner border border-amber-100 group-hover/bin:rotate-12 transition-transform">👔</div>
@@ -140,33 +172,41 @@ const RecycleBin: React.FC<RecycleBinProps> = ({
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{deletedEmployees.length} Records</p>
                  </div>
              </div>
+             <button 
+                onClick={() => toggleBin('employees')}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${visibleBins.employees ? 'bg-amber-600 text-white shadow-lg shadow-amber-200' : 'bg-white text-slate-400 border border-slate-200 hover:border-amber-400 hover:text-amber-600'}`}
+             >
+                {visibleBins.employees ? '👁️' : '🙈'}
+             </button>
           </div>
-          <div className="divide-y divide-slate-50 overflow-y-auto flex-1 scrollbar-hide">
-            {deletedEmployees.length > 0 ? deletedEmployees.map(emp => (
-              <div key={emp.id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors animate-fade-in">
-                <div className="min-w-0 pr-2">
-                   <p className="font-black text-slate-800 truncate">{emp.name}</p>
-                   <div className="flex items-center gap-2 mt-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{emp.role}</p>
-                        <ExpiryBadge deletedAt={emp.deletedAt} />
-                   </div>
+          {visibleBins.employees && (
+            <div className="divide-y divide-slate-50 overflow-y-auto flex-1 animate-fade-in">
+              {deletedEmployees.length > 0 ? deletedEmployees.map(emp => (
+                <div key={emp.id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors animate-fade-in">
+                  <div className="min-w-0 pr-2">
+                     <p className="font-black text-slate-800 truncate">{emp.name}</p>
+                     <div className="flex items-center gap-2 mt-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{emp.role}</p>
+                          <ExpiryBadge deletedAt={emp.deletedAt} />
+                     </div>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => onRestoreEmployee && handleAction("Restore Employee?", `Bring ${emp.name} back?`, () => onRestoreEmployee(emp.id), 'restore', `${emp.name} restored!`)} className="w-9 h-9 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="Restore">♻️</button>
+                    <button onClick={() => handleAction("Permanent Delete?", `Delete ${emp.name} forever?`, () => onHardDeleteEmployee?.(emp.id), 'delete', `${emp.name} purged!`)} className="w-9 h-9 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl border border-rose-100 hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="Purge">🗑️</button>
+                  </div>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <button onClick={() => onRestoreEmployee && handleAction("Restore Employee?", `Bring ${emp.name} back?`, () => onRestoreEmployee(emp.id), 'restore', `${emp.name} restored!`)} className="w-9 h-9 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="Restore">♻️</button>
-                  <button onClick={() => handleAction("Permanent Delete?", `Delete ${emp.name} forever?`, () => onHardDeleteEmployee?.(emp.id), 'delete', `${emp.name} purged!`)} className="w-9 h-9 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl border border-rose-100 hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="Purge">🗑️</button>
+              )) : (
+                <div className="h-full flex flex-col items-center justify-center text-slate-200 p-10 text-center">
+                    <span className="text-6xl mb-4">👔</span>
+                    <p className="font-black text-sm uppercase tracking-widest opacity-50">Employee bin is empty</p>
                 </div>
-              </div>
-            )) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-200 p-10 text-center">
-                  <span className="text-6xl mb-4">👔</span>
-                  <p className="font-black text-sm uppercase tracking-widest opacity-50">Employee bin is empty</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Fees Bin */}
-        <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden h-[500px] flex flex-col group/bin">
+        <div className={`bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden transition-all duration-500 flex flex-col group/bin ${visibleBins.fees ? 'h-[500px]' : 'h-auto'}`}>
            <div className="p-6 bg-slate-50/50 border-b border-slate-100 shrink-0">
              <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center gap-3">
@@ -176,44 +216,52 @@ const RecycleBin: React.FC<RecycleBinProps> = ({
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{deletedFees.length} Records</p>
                     </div>
                 </div>
+                <button 
+                    onClick={() => toggleBin('fees')}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${visibleBins.fees ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-white text-slate-400 border border-slate-200 hover:border-emerald-400 hover:text-emerald-600'}`}
+                >
+                    {visibleBins.fees ? '👁️' : '🙈'}
+                </button>
              </div>
           </div>
-           <div className="divide-y divide-slate-50 overflow-y-auto flex-1 scrollbar-hide">
-            {deletedFees.length > 0 ? deletedFees.map(fee => {
-               const student = data.students.find(s => s.id === fee.studentId);
-               return (
-                <div key={fee.id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors animate-fade-in">
-                  <div className="min-w-0 pr-2">
-                    <p className="font-black text-slate-800 truncate">{currency}{fee.amount.toLocaleString()} - {fee.type}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase truncate">
-                            {student?.name || 'Archived'}
-                        </p>
-                        <ExpiryBadge deletedAt={fee.deletedAt} />
+          {visibleBins.fees && (
+            <div className="divide-y divide-slate-50 overflow-y-auto flex-1 animate-fade-in">
+              {deletedFees.length > 0 ? deletedFees.map(fee => {
+                 const student = data.students.find(s => s.id === fee.studentId);
+                 return (
+                  <div key={fee.id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors animate-fade-in">
+                    <div className="min-w-0 pr-2">
+                      <p className="font-black text-slate-800 truncate">{currency}{fee.amount.toLocaleString()} - {fee.type}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase truncate">
+                              {student?.name || 'Archived'}
+                          </p>
+                          <ExpiryBadge deletedAt={fee.deletedAt} />
+                      </div>
+                    </div>
+                     <div className="flex gap-2 shrink-0">
+                      <button 
+                          onClick={() => handleAction("Restore Fee Record?", `Recover this fee payment for ${student?.name}?`, () => onRestoreFee(fee.id), 'restore', "Record restored!")} 
+                          className="px-4 py-2 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase rounded-xl border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center gap-2"
+                      >
+                          <span>♻️</span>
+                          <span>Restore</span>
+                      </button>
                     </div>
                   </div>
-                   <div className="flex gap-2 shrink-0">
-                    <button 
-                        onClick={() => handleAction("Restore Fee Record?", `Recover this fee payment for ${student?.name}?`, () => onRestoreFee(fee.id), 'restore', "Record restored!")} 
-                        className="px-4 py-2 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase rounded-xl border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center gap-2"
-                    >
-                        <span>♻️</span>
-                        <span>Restore</span>
-                    </button>
-                  </div>
+                 );
+              }) : (
+                <div className="h-full flex flex-col items-center justify-center text-slate-200 p-10 text-center">
+                    <span className="text-6xl mb-4">💎</span>
+                    <p className="font-black text-sm uppercase tracking-widest opacity-50">Financial bin is clear</p>
                 </div>
-               );
-            }) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-200 p-10 text-center">
-                  <span className="text-6xl mb-4">💎</span>
-                  <p className="font-black text-sm uppercase tracking-widest opacity-50">Financial bin is clear</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Expenses Bin */}
-        <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden h-[500px] flex flex-col group/bin">
+        <div className={`bg-white rounded-[2.5rem] shadow-xl border border-slate-100 overflow-hidden transition-all duration-500 flex flex-col group/bin ${visibleBins.expenses ? 'h-[500px]' : 'h-auto'}`}>
            <div className="p-6 bg-slate-50/50 border-b border-slate-100 flex justify-between items-center shrink-0">
              <div className="flex items-center gap-3">
                  <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl shadow-inner border border-rose-100 group-hover/bin:rotate-12 transition-transform">💸</div>
@@ -222,29 +270,37 @@ const RecycleBin: React.FC<RecycleBinProps> = ({
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{deletedExpenses.length} Records</p>
                  </div>
              </div>
+             <button 
+                onClick={() => toggleBin('expenses')}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${visibleBins.expenses ? 'bg-rose-600 text-white shadow-lg shadow-rose-200' : 'bg-white text-slate-400 border border-slate-200 hover:border-rose-400 hover:text-rose-600'}`}
+             >
+                {visibleBins.expenses ? '👁️' : '🙈'}
+             </button>
           </div>
-           <div className="divide-y divide-slate-50 overflow-y-auto flex-1 scrollbar-hide">
-            {deletedExpenses.length > 0 ? deletedExpenses.map(expense => (
-                <div key={expense.id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors animate-fade-in">
-                  <div className="min-w-0 pr-2">
-                    <p className="font-black text-slate-800 truncate">{currency}{expense.amount.toLocaleString()} - {expense.title}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{expense.category}</p>
-                        <ExpiryBadge deletedAt={expense.deletedAt} />
+          {visibleBins.expenses && (
+            <div className="divide-y divide-slate-50 overflow-y-auto flex-1 animate-fade-in">
+              {deletedExpenses.length > 0 ? deletedExpenses.map(expense => (
+                  <div key={expense.id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors animate-fade-in">
+                    <div className="min-w-0 pr-2">
+                      <p className="font-black text-slate-800 truncate">{currency}{expense.amount.toLocaleString()} - {expense.title}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{expense.category}</p>
+                          <ExpiryBadge deletedAt={expense.deletedAt} />
+                      </div>
+                    </div>
+                     <div className="flex gap-2 shrink-0">
+                      <button onClick={() => handleAction("Restore Expense?", `Bring back expense record: "${expense.title}"?`, () => onRestoreExpense(expense.id), 'restore', "Expense record restored!")} className="w-9 h-9 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="Restore">♻️</button>
+                      <button onClick={() => handleAction("Permanent Delete?", `Purge expense record: "${expense.title}"? This will affect historical statistics.`, () => onHardDeleteExpense(expense.id), 'delete', "Expense purged!")} className="w-9 h-9 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl border border-rose-100 hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="Purge">🗑️</button>
                     </div>
                   </div>
-                   <div className="flex gap-2 shrink-0">
-                    <button onClick={() => handleAction("Restore Expense?", `Bring back expense record: "${expense.title}"?`, () => onRestoreExpense(expense.id), 'restore', "Expense record restored!")} className="w-9 h-9 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="Restore">♻️</button>
-                    <button onClick={() => handleAction("Permanent Delete?", `Purge expense record: "${expense.title}"? This will affect historical statistics.`, () => onHardDeleteExpense(expense.id), 'delete', "Expense purged!")} className="w-9 h-9 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl border border-rose-100 hover:bg-rose-600 hover:text-white transition-all shadow-sm" title="Purge">🗑️</button>
-                  </div>
+              )) : (
+                <div className="h-full flex flex-col items-center justify-center text-slate-200 p-10 text-center">
+                    <span className="text-6xl mb-4">📉</span>
+                    <p className="font-black text-sm uppercase tracking-widest opacity-50">Expense bin is empty</p>
                 </div>
-            )) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-200 p-10 text-center">
-                  <span className="text-6xl mb-4">📉</span>
-                  <p className="font-black text-sm uppercase tracking-widest opacity-50">Expense bin is empty</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

@@ -102,6 +102,7 @@ export interface SchoolProfileData {
   termsAndConditions?: string;
   authorizedSignature?: string;
   departments?: string[];
+  notice?: string;
 }
 
 export interface UserProfileData {
@@ -124,6 +125,24 @@ export interface SliderImage {
   description?: string;
 }
 
+export interface LandingPageSettings {
+  enabled: boolean;
+  showHero: boolean;
+  showProfile: boolean;
+  showFacilities: boolean;
+  showEvents: boolean;
+  showStarStudents: boolean;
+  showManagement: boolean;
+  showGallery: boolean;
+  showEcosystem: boolean;
+  showStats: boolean;
+  showFooter: boolean;
+  heroTitle?: string;
+  heroSubtitle?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+}
+
 export interface AppSettings {
   theme: 'light' | 'dark' | 'vibrant' | 'glass' | 'modern' | 'ocean';
   fontSize: number;
@@ -138,6 +157,15 @@ export interface AppSettings {
   lateFeeGracePeriod: number;
   dateFormat?: 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD';
   sidebarAutoCollapse?: boolean;
+  socialMedia?: {
+    facebook?: string;
+    instagram?: string;
+    twitter?: string;
+    youtube?: string;
+    linkedin?: string;
+    whatsapp?: string;
+    gmail?: string;
+  };
   imageSlider: {
     enabled: boolean;
     autoplay: boolean;
@@ -165,6 +193,15 @@ export interface AppSettings {
       placement: 'dashboard_top' | 'dashboard_middle' | 'dashboard_bottom' | 'sidebar' | 'student_list_top' | 'fee_receipt_bottom';
     }[];
   };
+  landingPage: LandingPageSettings;
+}
+
+export interface Note {
+  id: string;
+  content: string;
+  color: string;
+  createdAt: string;
+  isPinned?: boolean;
 }
 
 export interface AppData {
@@ -174,7 +211,9 @@ export interface AppData {
   feeCategories: string[];
   fees: FeeRecord[];
   expenses: ExpenseRecord[];
+  notes: Note[];
   schoolProfile: SchoolProfileData;
   userProfile: UserProfileData;
   settings: AppSettings;
+  lastSyncDate?: string;
 }

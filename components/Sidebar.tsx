@@ -118,7 +118,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
           <div className="flex items-center gap-3 w-full">
                {/* Logo */}
                <div className={`rounded-xl bg-white border border-indigo-100 flex items-center justify-center overflow-hidden shrink-0 shadow-sm transition-all duration-300 ${isCollapsed ? 'w-10 h-10' : 'w-12 h-12'}`}>
-                    {schoolProfile.logo ? (
+                    {schoolProfile?.logo ? (
                        <img src={schoolProfile.logo} alt="Logo" className="w-full h-full object-contain p-1" />
                     ) : (
                        <span className="text-2xl">🏫</span>
@@ -127,10 +127,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
                
                {/* Text Details */}
                <div className={`flex-col overflow-hidden transition-opacity duration-300 ${isCollapsed ? 'hidden opacity-0' : 'flex opacity-100'}`}>
-                    <h1 className="text-base font-black text-slate-800 leading-tight truncate w-44" title={schoolProfile.name || "School Manager"}>
-                       {schoolProfile.name || "School Manager"}
+                    <h1 className="text-base font-black text-slate-800 leading-tight truncate w-44" title={schoolProfile?.name || "School Manager"}>
+                       {schoolProfile?.name || "School Manager"}
                     </h1>
-                    {schoolProfile.motto && (
+                    {schoolProfile?.motto && (
                         <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wide truncate mt-0.5 w-44 opacity-80" title={schoolProfile.motto}>
                            {schoolProfile.motto}
                         </p>
@@ -143,7 +143,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
              <div className="mt-3 flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 w-fit shadow-sm">
                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
                  <span className="text-[9px] font-bold text-slate-400 uppercase">Session</span>
-                 <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 rounded">{schoolProfile.currentSession || 'N/A'}</span>
+                 <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 rounded">{schoolProfile?.currentSession || 'N/A'}</span>
              </div>
           )}
       </div>

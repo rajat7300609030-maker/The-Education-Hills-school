@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ViewState, UserProfileData, AppNotification } from '../types';
+import { ViewState, UserProfileData, AppNotification, SchoolProfileData } from '../types';
 
 interface TopBarProps {
   currentView: ViewState;
   user: UserProfileData;
+  schoolProfile: SchoolProfileData;
   session: string;
   notifications?: AppNotification[];
   isSidebarCollapsed: boolean;
@@ -11,18 +12,21 @@ interface TopBarProps {
   onOpenProfile: () => void;
   onClearNotifications?: () => void;
   userRole?: 'ADMIN' | 'STUDENT';
+  syncStatus?: 'synced' | 'syncing' | 'error';
 }
 
 const TopBar: React.FC<TopBarProps> = ({ 
   currentView, 
   user, 
+  schoolProfile,
   session, 
   notifications = [], 
   isSidebarCollapsed, 
   onToggleSidebar, 
   onOpenProfile,
   onClearNotifications,
-  userRole = 'ADMIN'
+  userRole = 'ADMIN',
+  syncStatus = 'synced'
 }) => {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -87,103 +91,91 @@ const TopBar: React.FC<TopBarProps> = ({
   };
 
   return (
-    <header className={`min-h-[5rem] pt-[env(safe-area-inset-top)] bg-gradient-to-r ${getGradientClass(currentView)} shadow-2xl flex items-center justify-between px-4 md:px-8 z-40 shrink-0 transition-all duration-500 ease-in-out border-b border-white/10`}>
-      <div className="flex items-center gap-3 md:gap-4 overflow-hidden h-16">
-        <button 
-          onClick={onToggleSidebar}
-          className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white transition-all active:scale-90 border border-white/5"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-          </svg>
-        </button>
-        <div className="flex flex-col">
-          <h1 className="text-xl md:text-2xl font-black text-white tracking-tighter whitespace-nowrap animate-fade-in">
-            {getTitle(currentView)}
-          </h1>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em]">{session} Session</span>
-          </div>
-        </div>
+    <header className={`h-16 pt-[env(safe-area-inset-top)] bg-gradient-to-r ${getGradientClass(currentView)} shadow-md flex items-center px-6 z-40 shrink-0 border-b border-white/10`}>
+      <button 
+        onClick={onToggleSidebar}
+        className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all active:scale-90"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </button>
+      
+      <div className="flex-1 flex items-center justify-start gap-4 md:gap-6 ml-4">
+        <h1 className="text-lg md:text-xl font-black text-white tracking-tight animate-fade-in">
+          {getTitle(currentView)}
+        </h1>
+        <div className="h-4 w-px bg-white/20 hidden md:block"></div>
+        <span className="text-[10px] md:text-xs font-black text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-full border border-emerald-400/20 tracking-widest">
+          {session}
+        </span>
       </div>
-
-      <div className="flex items-center gap-2 md:gap-4 relative">
+      
+      <div className="flex items-center gap-2 md:gap-4">
         {/* Notifications */}
         <div className="relative" ref={popoverRef}>
           <button 
             onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-            className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white relative transition-all active:scale-95 border border-white/5"
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all relative active:scale-90"
           >
             <span className="text-xl">🔔</span>
             {notifications.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-slate-900 shadow-lg">
-                {notifications.length > 9 ? '9+' : notifications.length}
-              </span>
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-900 animate-pulse"></span>
             )}
           </button>
 
           {isNotificationOpen && (
-            <div className="absolute right-0 mt-4 w-72 md:w-80 bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-slate-200 overflow-hidden animate-scale-in z-[60]">
-              <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
-                <h4 className="font-black text-slate-800 uppercase tracking-widest text-xs">Alerts & Logs</h4>
-                <button onClick={() => setIsNotificationOpen(false)} className="text-slate-400 font-bold hover:text-slate-600">✕</button>
-              </div>
-              <div className="max-h-[350px] overflow-y-auto divide-y divide-slate-50">
-                {notifications.length > 0 ? notifications.slice(0, 8).map((n) => (
-                  <div key={n.id} className="p-4 hover:bg-slate-50 transition-colors flex gap-3">
-                    <span className="text-xl shrink-0">{getNotificationIcon(n.type)}</span>
-                    <div>
-                      <p className="text-xs font-bold text-slate-700 leading-tight">{n.message}</p>
-                      <p className="text-[9px] text-slate-400 font-black uppercase mt-1">
-                        {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="p-10 text-center">
-                    <span className="text-4xl block mb-2 opacity-20">🍃</span>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No New Alerts</p>
-                  </div>
+            <div className="absolute right-0 mt-3 w-72 md:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 className="font-black text-slate-800 text-sm tracking-tight">Notifications</h3>
+                {notifications.length > 0 && (
+                  <button 
+                    onClick={onClearNotifications}
+                    className="text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest"
+                  >
+                    Clear All
+                  </button>
                 )}
               </div>
-              <div className="p-3 bg-slate-50 text-center border-t border-slate-100">
-                <button 
-                  onClick={() => {
-                    if (onClearNotifications) onClearNotifications();
-                    setIsNotificationOpen(false);
-                  }}
-                  disabled={notifications.length === 0}
-                  className="text-[10px] font-black text-rose-600 uppercase tracking-widest hover:underline disabled:opacity-30 disabled:no-underline flex items-center justify-center gap-2 w-full"
-                >
-                  <span>🗑️</span>
-                  <span>Clear history</span>
-                </button>
+              <div className="max-h-80 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <div className="text-3xl mb-2">🔔</div>
+                    <p className="text-slate-400 text-xs font-bold">No new notifications</p>
+                  </div>
+                ) : (
+                  notifications.map(n => (
+                    <div key={n.id} className="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors flex gap-3 items-start">
+                      <span className="text-lg shrink-0">{getNotificationIcon(n.type)}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-800 leading-relaxed">{n.message}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 font-medium">{new Date(n.timestamp).toLocaleTimeString()}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
         </div>
 
-        {/* User Profile Quick Access - Only visible for Admins */}
-        {isAdmin && (
-          <button 
-            onClick={onOpenProfile}
-            className="flex items-center gap-3 p-1.5 pr-4 rounded-2xl bg-white/10 hover:bg-white/20 transition-all border border-white/5 active:scale-95 group"
-          >
-            <div className="w-9 h-9 md:w-11 md:h-11 rounded-[1rem] bg-white border-2 border-indigo-500 shadow-lg overflow-hidden shrink-0 group-hover:scale-105 transition-transform">
-              {user.photo ? (
-                <img src={user.photo} alt={user.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-indigo-50 flex items-center justify-center text-lg font-black text-indigo-600">
-                  {user.name.charAt(0)}
-                </div>
-              )}
-            </div>
-            <div className="hidden md:flex flex-col items-start text-left">
-              <p className="text-sm font-black text-white leading-none">{user.name}</p>
-            </div>
-          </button>
-        )}
+        {/* User Profile */}
+        <button 
+          onClick={onOpenProfile}
+          className="flex items-center gap-2 p-1.5 pr-3 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all active:scale-95 border border-white/10 group"
+        >
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-sm font-black shadow-lg group-hover:scale-110 transition-transform overflow-hidden">
+            {user.photo ? (
+              <img src={user.photo} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              user.name.charAt(0)
+            )}
+          </div>
+          <div className="hidden md:block text-left">
+            <p className="text-[10px] font-black leading-none opacity-60 uppercase tracking-widest">{userRole}</p>
+            <p className="text-xs font-bold leading-tight truncate max-w-[100px]">{user.name}</p>
+          </div>
+        </button>
       </div>
     </header>
   );

@@ -10,6 +10,9 @@ interface ExpensesProps {
   onDeleteExpense: (id: string) => void;
   initialFormData?: Partial<Omit<ExpenseRecord, 'id' | 'isDeleted'>>;
   onClearInitialData?: () => void;
+  syncStatus?: 'synced' | 'syncing' | 'error';
+  onManualSync?: () => Promise<void>;
+  session?: string;
 }
 
 const Expenses: React.FC<ExpensesProps> = ({ 
@@ -19,7 +22,10 @@ const Expenses: React.FC<ExpensesProps> = ({
   onEditExpense, 
   onDeleteExpense,
   initialFormData,
-  onClearInitialData
+  onClearInitialData,
+  syncStatus = 'synced',
+  onManualSync,
+  session = '2024-25'
 }) => {
   // --- State ---
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -163,15 +169,37 @@ const Expenses: React.FC<ExpensesProps> = ({
         
        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="animate-slide-up">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-200">
-                ☁️ Cloud Synced
-            </span>
+          <div className="flex items-center gap-3">
+            <h2 className="text-4xl font-black text-slate-900 flex items-center gap-3">
+                <span>Expenses</span>
+                {session && (
+                  <span className="text-sm font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100 tracking-widest">
+                    {session}
+                  </span>
+                )}
+                <span>💸</span>
+            </h2>
+            {syncStatus === 'syncing' && (
+              <span className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-full animate-pulse border border-blue-100">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
+                Syncing...
+              </span>
+            )}
+            {syncStatus === 'synced' && (
+              <span className="flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full border border-emerald-100">
+                ✅
+              </span>
+            )}
+            {syncStatus === 'error' && (
+              <button 
+                onClick={() => onManualSync?.()}
+                className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded-full border border-red-100 hover:bg-red-100 transition-colors"
+              >
+                <span className="text-[10px]">⚠️</span>
+                Sync Error - Retry
+              </button>
+            )}
           </div>
-          <h2 className="text-4xl font-black text-slate-900 flex items-center gap-3">
-              <span>Expenses</span>
-              <span>💸</span>
-          </h2>
           <p className="text-slate-500 font-medium mt-1 italic opacity-80">Track institutional costs and maintain historical records.</p>
         </div>
       </header>

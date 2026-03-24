@@ -17,6 +17,8 @@ interface FeesProps {
   onUpdateFeeStatus: (id: string, status: FeeRecord['status']) => void;
   initialStudentId?: string | null;
   userRole?: 'ADMIN' | 'STUDENT';
+  syncStatus?: 'synced' | 'syncing' | 'error';
+  onManualSync?: () => Promise<void>;
 }
 
 const Fees: React.FC<FeesProps> = ({ 
@@ -32,7 +34,9 @@ const Fees: React.FC<FeesProps> = ({
   onDeleteFee, 
   onUpdateFeeStatus,
   initialStudentId,
-  userRole = 'ADMIN'
+  userRole = 'ADMIN',
+  syncStatus = 'synced',
+  onManualSync
 }) => {
   const isAdmin = userRole === 'ADMIN';
   const isStudent = userRole === 'STUDENT';
@@ -195,8 +199,8 @@ const Fees: React.FC<FeesProps> = ({
         student_class: student?.grade,
         parent_name: student?.parentName,
         student_phone: student?.phone,
-        school_name: schoolProfile.name,
-        session: schoolProfile.currentSession,
+        school_name: schoolProfile?.name,
+        session: schoolProfile?.currentSession,
         update_mode: !!editingId
     };
 
@@ -378,10 +382,35 @@ const Fees: React.FC<FeesProps> = ({
     <div className="space-y-8 pb-12 animate-fade-in relative">
        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="text-4xl font-black text-slate-900 flex items-center gap-3">
-              <span>Fees Manager</span>
-              <span>💰</span>
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-4xl font-black text-slate-900 flex items-center gap-3">
+                <span>Fees Manager</span>
+                <span className="text-sm font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100 tracking-widest">
+                  {schoolProfile.currentSession}
+                </span>
+                <span>💰</span>
+            </h2>
+            {syncStatus === 'syncing' && (
+              <span className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-full animate-pulse border border-blue-100">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
+                Syncing...
+              </span>
+            )}
+            {syncStatus === 'synced' && (
+              <span className="flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full border border-emerald-100">
+                ✅
+              </span>
+            )}
+            {syncStatus === 'error' && (
+              <button 
+                onClick={() => onManualSync?.()}
+                className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded-full border border-red-100 hover:bg-red-100 transition-colors"
+              >
+                <span className="text-[10px]">⚠️</span>
+                Sync Error - Retry
+              </button>
+            )}
+          </div>
           <p className="text-slate-500 font-medium mt-1">
             {isAdmin ? 'Manage student payments and track financial inflow.' : 'Track your fee payments and history.'}
           </p>
@@ -842,15 +871,15 @@ const Fees: React.FC<FeesProps> = ({
                         <div className="absolute top-0 left-0 w-full h-2 bg-indigo-600 rounded-t-full"></div>
                         <div className="text-center mb-8 pb-6 border-b-2 border-dashed border-slate-100">
                             <div className="w-24 h-24 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 border-2 border-slate-100 shadow-lg overflow-hidden p-2">
-                                {schoolProfile.logo ? (
+                                {schoolProfile?.logo ? (
                                     <img src={schoolProfile.logo} alt="Logo" className="w-full h-full object-contain" />
                                 ) : (
                                     <span className="text-5xl">🏫</span>
                                 )}
                             </div>
-                            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none">{schoolProfile.name}</h2>
-                            <p className="text-xs text-slate-500 italic mt-2">"{schoolProfile.motto}"</p>
-                            <div className="inline-block px-3 py-1 bg-slate-100 rounded-full text-[9px] font-black text-slate-500 mt-4 uppercase tracking-widest border border-slate-200">Session: {schoolProfile.currentSession}</div>
+                            <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter leading-none">{schoolProfile?.name}</h2>
+                            <p className="text-xs text-slate-500 italic mt-2">"{schoolProfile?.motto}"</p>
+                            <div className="inline-block px-3 py-1 bg-slate-100 rounded-full text-[9px] font-black text-slate-500 mt-4 uppercase tracking-widest border border-slate-200">Session: {schoolProfile?.currentSession}</div>
                         </div>
                         <div className="space-y-6 mb-8">
                             <div className="flex justify-between items-start">

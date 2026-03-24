@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { AppSettings, AppData, SliderImage, Student } from '../types';
+import { AppSettings, AppData, SliderImage, Student, LandingPageSettings } from '../types';
+import { compressImage } from '../utils/imageUtils';
 
 interface SettingsProps {
   settings: AppSettings;
@@ -8,15 +9,32 @@ interface SettingsProps {
   onLoadData: (data: AppData) => void;
   onFactoryReset?: () => Promise<void>;
   onNotify?: (message: string, type: 'success' | 'error' | 'info') => void;
+  syncStatus?: 'synced' | 'syncing' | 'error';
+  dbSyncError?: string | null;
+  onManualSync?: () => Promise<void>;
+  session?: string;
 }
 
-const Settings: React.FC<SettingsProps> = ({ settings, data, onUpdateSettings, onLoadData, onFactoryReset, onNotify }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'security' | 'notifications' | 'fees' | 'slider' | 'data'>('general');
+const Settings: React.FC<SettingsProps> = ({ 
+    settings, 
+    data, 
+    onUpdateSettings, 
+    onLoadData, 
+    onFactoryReset, 
+    onNotify,
+    syncStatus = 'synced',
+    dbSyncError = null,
+    onManualSync,
+    session = '2024-25'
+}) => {
+  const [activeTab, setActiveTab] = useState<'general' | 'security' | 'notifications' | 'fees' | 'slider' | 'social' | 'data' | 'sync' | 'loading'>('general');
   const [newSlide, setNewSlide] = useState({ url: '', title: '', description: '' });
   const [isChangingPin, setIsChangingPin] = useState(false);
   const [pinData, setPinData] = useState({ current: '', new: '', confirm: '' });
   const [showPins, setShowPins] = useState({ current: false, new: false, confirm: false });
   const [isAddingSlide, setIsAddingSlide] = useState(false);
+  const [isAddingAdUnit, setIsAddingAdUnit] = useState(false);
+  const [newAdUnit, setNewAdUnit] = useState({ name: '', unitId: '', format: 'auto' as const, placement: 'dashboard_top' as const });
   const [newCategory, setNewCategory] = useState('');
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   
@@ -54,6 +72,16 @@ const Settings: React.FC<SettingsProps> = ({ settings, data, onUpdateSettings, o
       });
   };
 
+  const handleSocialChange = (key: keyof NonNullable<AppSettings['socialMedia']>, value: string) => {
+    onUpdateSettings({
+      ...settings,
+      socialMedia: {
+        ...(settings.socialMedia || {}),
+        [key]: value
+      }
+    });
+  };
+
   const handleAdsenseConfigChange = (key: keyof NonNullable<AppSettings['adsense']>, value: any) => {
       onUpdateSettings({
           ...settings,
@@ -64,11 +92,21 @@ const Settings: React.FC<SettingsProps> = ({ settings, data, onUpdateSettings, o
       });
   };
 
+  const handleLandingPageChange = (key: keyof AppSettings['landingPage'], value: any) => {
+    onUpdateSettings({
+      ...settings,
+      landingPage: {
+        ...settings.landingPage,
+        [key]: value
+      }
+    });
+  };
+
   const handleAddAdUnit = (e: React.FormEvent) => {
       e.preventDefault();
       if (!newAdUnit.name || !newAdUnit.unitId) return;
 
-      const newId = `ad-${Date.now()}`;
+      const newId = `ad-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
       const updatedUnits = [...(settings.adsense?.units || []), { ...newAdUnit, id: newId }];
       
       handleAdsenseConfigChange('units', updatedUnits);
@@ -87,7 +125,7 @@ const Settings: React.FC<SettingsProps> = ({ settings, data, onUpdateSettings, o
       e.preventDefault();
       if (!newSlide.url) return;
 
-      const newId = `slide-${Date.now()}`;
+      const newId = `slide-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
       const updatedImages = [...(settings.imageSlider.images || []), { ...newSlide, id: newId }];
       
       handleSliderConfigChange('images', updatedImages);
@@ -106,8 +144,9 @@ const Settings: React.FC<SettingsProps> = ({ settings, data, onUpdateSettings, o
       const file = e.target.files?.[0];
       if (file) {
           const reader = new FileReader();
-          reader.onloadend = () => {
-              setNewSlide(prev => ({ ...prev, url: reader.result as string }));
+          reader.onloadend = async () => {
+              const compressed = await compressImage(reader.result as string, 1200, 800, 0.6);
+              setNewSlide(prev => ({ ...prev, url: compressed }));
           };
           reader.readAsDataURL(file);
       }
@@ -1119,20 +1158,400 @@ const Settings: React.FC<SettingsProps> = ({ settings, data, onUpdateSettings, o
     );
   };
 
+  const renderSocial = () => {
+    const platforms = [
+      { id: 'gmail', label: 'Gmail / Email', icon: '📧', placeholder: 'mailto:admin@school.com', color: 'bg-red-50 text-red-600' },
+      { id: 'facebook', label: 'Facebook', icon: '📘', placeholder: 'https://facebook.com/yourschool', color: 'bg-blue-50 text-blue-600' },
+      { id: 'instagram', label: 'Instagram', icon: '📸', placeholder: 'https://instagram.com/yourschool', color: 'bg-pink-50 text-pink-600' },
+      { id: 'youtube', label: 'YouTube', icon: '🎥', placeholder: 'https://youtube.com/c/yourschool', color: 'bg-red-50 text-red-600' },
+      { id: 'twitter', label: 'Twitter / X', icon: '🐦', placeholder: 'https://twitter.com/yourschool', color: 'bg-slate-50 text-slate-800' },
+      { id: 'linkedin', label: 'LinkedIn', icon: '💼', placeholder: 'https://linkedin.com/school/yourschool', color: 'bg-blue-50 text-blue-700' },
+      { id: 'whatsapp', label: 'WhatsApp', icon: '💬', placeholder: 'https://wa.me/1234567890', color: 'bg-emerald-50 text-emerald-600' },
+    ];
+
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="bg-gradient-to-r from-pink-600 to-rose-500 rounded-3xl p-6 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          <div className="relative z-10">
+            <h3 className="text-2xl font-black mb-1">Social Media Presence</h3>
+            <p className="text-rose-100 text-xs font-medium">Connect your institution with the digital world.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {platforms.map((platform) => (
+            <div key={platform.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+              <div className="flex items-center gap-4 mb-4">
+                <div className={`w-12 h-12 ${platform.color} rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform`}>
+                  {platform.icon}
+                </div>
+                <div>
+                  <h4 className="font-black text-slate-800 uppercase tracking-widest text-xs">{platform.label}</h4>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Official Link</p>
+                </div>
+              </div>
+              <input 
+                type="text"
+                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-rose-500 transition-all"
+                placeholder={platform.placeholder}
+                value={(settings.socialMedia as any)?.[platform.id] || ''}
+                onChange={(e) => handleSocialChange(platform.id as any, e.target.value)}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-amber-50 p-6 rounded-[2rem] border border-amber-100 flex items-start gap-4">
+          <span className="text-2xl">💡</span>
+          <div>
+            <h4 className="font-black text-amber-800 uppercase tracking-widest text-xs mb-1">Pro Tip</h4>
+            <p className="text-xs text-amber-700 leading-relaxed font-medium">
+              These links will be automatically integrated into your Landing Page footer and Contact sections, allowing parents and students to easily find your official channels.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderLoading = () => {
+    const sections = [
+      { id: 'showHero', label: 'Hero Section', icon: '✨' },
+      { id: 'showProfile', label: 'School Profile', icon: '🏫' },
+      { id: 'showFacilities', label: 'Facilities', icon: '🏗️' },
+      { id: 'showEvents', label: 'Upcoming Events', icon: '📅' },
+      { id: 'showStarStudents', label: 'Star Students', icon: '⭐' },
+      { id: 'showManagement', label: 'Management', icon: '👥' },
+      { id: 'showGallery', label: 'Campus Gallery', icon: '🖼️' },
+      { id: 'showEcosystem', label: 'Learning Ecosystem', icon: '🌐' },
+      { id: 'showStats', label: 'School Stats', icon: '📊' },
+      { id: 'showFooter', label: 'Footer Section', icon: '🏁' },
+    ];
+
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="bg-gradient-to-r from-indigo-600 to-blue-500 rounded-3xl p-6 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <h3 className="text-2xl font-black mb-1">Loading Page Settings</h3>
+              <p className="text-indigo-100 text-xs font-medium">Customize your public-facing landing page.</p>
+            </div>
+            <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-2xl backdrop-blur-md border border-white/10">
+              <span className="text-xs font-bold uppercase tracking-widest">Page Status</span>
+              <button 
+                onClick={() => handleLandingPageChange('enabled', !settings.landingPage?.enabled)}
+                className={`w-12 h-6 rounded-full relative transition-all duration-300 ${settings.landingPage?.enabled ? 'bg-emerald-500' : 'bg-white/20'}`}
+              >
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300 ${settings.landingPage?.enabled ? 'left-6.5' : 'left-0.5'}`}></div>
+              </button>
+            </div>
+            <button 
+              onClick={() => {
+                if (window.confirm('Are you sure you want to reset all landing page settings to default?')) {
+                  const defaults = {
+                    enabled: true,
+                    heroTitle: 'Inspiring Future',
+                    heroSubtitle: 'Leaders Today.',
+                    primaryColor: '#4F46E5',
+                    secondaryColor: '#F59E0B',
+                    showHero: true,
+                    showProfile: true,
+                    showFacilities: true,
+                    showEvents: true,
+                    showStarStudents: true,
+                    showManagement: true,
+                    showGallery: true,
+                    showEcosystem: true,
+                    showStats: true,
+                    showFooter: true,
+                  };
+                  Object.entries(defaults).forEach(([key, value]) => {
+                    handleLandingPageChange(key as keyof LandingPageSettings, value);
+                  });
+                }
+              }}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/10 transition-all flex items-center gap-2"
+            >
+              <span>🔄</span> Reset Defaults
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+            <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+              <span>📝</span> Hero Content
+            </h4>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Hero Title</label>
+                <input 
+                  type="text"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={settings.landingPage?.heroTitle || ''}
+                  onChange={(e) => handleLandingPageChange('heroTitle', e.target.value)}
+                  placeholder="Main heading on landing page"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Hero Subtitle</label>
+                <textarea 
+                  rows={3}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  value={settings.landingPage?.heroSubtitle || ''}
+                  onChange={(e) => handleLandingPageChange('heroSubtitle', e.target.value)}
+                  placeholder="Supporting text below title"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+            <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+              <span>🎨</span> Visual Theme
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Primary Color</label>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="color"
+                    className="w-10 h-10 rounded-lg cursor-pointer border-none"
+                    value={settings.landingPage?.primaryColor || '#4F46E5'}
+                    onChange={(e) => handleLandingPageChange('primaryColor', e.target.value)}
+                  />
+                  <input 
+                    type="text"
+                    className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                    value={settings.landingPage?.primaryColor || '#4F46E5'}
+                    onChange={(e) => handleLandingPageChange('primaryColor', e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Secondary Color</label>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="color"
+                    className="w-10 h-10 rounded-lg cursor-pointer border-none"
+                    value={settings.landingPage?.secondaryColor || '#F59E0B'}
+                    onChange={(e) => handleLandingPageChange('secondaryColor', e.target.value)}
+                  />
+                  <input 
+                    type="text"
+                    className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                    value={settings.landingPage?.secondaryColor || '#F59E0B'}
+                    onChange={(e) => handleLandingPageChange('secondaryColor', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
+              <p className="text-[10px] text-amber-700 font-medium leading-relaxed">
+                Colors will be applied to buttons, accents, and gradients across the landing page.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+          <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2">
+            <span>🧩</span> Section Visibility
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sections.map((section) => (
+              <div key={section.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{section.icon}</span>
+                  <span className="text-xs font-bold text-slate-700">{section.label}</span>
+                </div>
+                <button 
+                  onClick={() => handleLandingPageChange(section.id as any, !(settings.landingPage?.[section.id as keyof LandingPageSettings]))}
+                  className={`w-10 h-5 rounded-full relative transition-all duration-300 ${settings.landingPage?.[section.id as keyof LandingPageSettings] ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${settings.landingPage?.[section.id as keyof LandingPageSettings] ? 'left-5.5' : 'left-0.5'}`}></div>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSync = () => {
+    const syncDetails = [
+        { label: 'Students', count: data.students.length, status: 'Active' },
+        { label: 'Employees', count: (data.employees || []).length, status: 'Active' },
+        { label: 'Fee Records', count: data.fees.length, status: 'Active' },
+        { label: 'Expenses', count: (data.expenses || []).length, status: 'Active' },
+        { label: 'Classes', count: data.classes.length, status: 'Configured' },
+        { label: 'Fee Categories', count: data.feeCategories.length, status: 'Configured' },
+    ];
+
+    return (
+        <div className="space-y-8 animate-fade-in">
+            <div className="bg-indigo-900 rounded-3xl p-8 text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+                    <div>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className={`w-3 h-3 rounded-full ${syncStatus === 'synced' ? 'bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)]' : syncStatus === 'syncing' ? 'bg-amber-400 animate-pulse' : 'bg-red-400'} `}></div>
+                            <h3 className="text-2xl font-black uppercase tracking-tight">Cloud Synchronization</h3>
+                        </div>
+                        <p className="text-indigo-200 text-sm font-medium">Manage your real-time database connection and sync health.</p>
+                    </div>
+                    <button 
+                        onClick={onManualSync}
+                        disabled={syncStatus === 'syncing'}
+                        className="px-8 py-4 bg-white text-indigo-900 rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl hover:bg-indigo-50 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-3"
+                    >
+                        {syncStatus === 'syncing' ? (
+                            <>
+                                <span className="animate-spin text-lg">🔄</span>
+                                <span>Syncing...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="text-lg">☁️</span>
+                                <span>Sync Now</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Successful Sync</p>
+                    <p className="text-lg font-black text-slate-800">
+                        {data.lastSyncDate ? new Date(data.lastSyncDate).toLocaleString() : 'Never'}
+                    </p>
+                </div>
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sync Status</p>
+                    <p className={`text-lg font-black uppercase ${syncStatus === 'synced' ? 'text-emerald-600' : syncStatus === 'syncing' ? 'text-amber-600' : 'text-red-600'}`}>
+                        {syncStatus === 'synced' ? '✅ Fully Synced' : syncStatus === 'syncing' ? '⏳ Syncing...' : '❌ Sync Error'}
+                    </p>
+                </div>
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Database Provider</p>
+                    <p className="text-lg font-black text-slate-800">Supabase Cloud</p>
+                </div>
+            </div>
+
+            {dbSyncError && (
+                <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-start gap-4 animate-shake">
+                    <span className="text-2xl">⚠️</span>
+                    <div>
+                        <p className="text-red-800 font-black text-xs uppercase tracking-widest mb-1">Database Error Detected</p>
+                        <p className="text-red-600 text-xs font-medium">{dbSyncError}</p>
+                    </div>
+                </div>
+            )}
+
+            <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100">
+                <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <span>📊</span> Sync Payload Details
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {syncDetails.map(detail => (
+                        <div key={detail.label} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{detail.label}</p>
+                                <p className="text-xl font-black text-slate-800">{detail.count}</p>
+                            </div>
+                            <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-full uppercase tracking-tighter">
+                                {detail.status}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-2xl">💡</div>
+                    <div>
+                        <h4 className="font-black text-slate-800 uppercase tracking-widest text-sm">Sync Information</h4>
+                        <p className="text-xs text-slate-400 font-medium">How synchronization works in your school manager.</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                        <div className="flex gap-4">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500 shrink-0">1</div>
+                            <p className="text-xs text-slate-600 leading-relaxed"><span className="font-bold text-slate-800">Auto-Sync:</span> The system automatically pushes changes to the cloud every 2 seconds after you stop typing or editing.</p>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500 shrink-0">2</div>
+                            <p className="text-xs text-slate-600 leading-relaxed"><span className="font-bold text-slate-800">Local Cache:</span> Your data is always saved locally first. If you're offline, changes will sync once you reconnect.</p>
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="flex gap-4">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500 shrink-0">3</div>
+                            <p className="text-xs text-slate-600 leading-relaxed"><span className="font-bold text-slate-800">Conflict Resolution:</span> The cloud database acts as the source of truth. Manual sync ensures your local state matches the cloud.</p>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500 shrink-0">4</div>
+                            <p className="text-xs text-slate-600 leading-relaxed"><span className="font-bold text-slate-800">Security:</span> All sync operations are protected by Row-Level Security (RLS) on Supabase.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+  };
+
   const tabs = [
     { id: 'general', label: 'General', icon: '⚙️' },
     { id: 'security', label: 'Security', icon: '🛡️' },
     { id: 'notifications', label: 'Notifications', icon: '🔔' },
     { id: 'fees', label: 'Fees & Rules', icon: '🏷️' },
     { id: 'slider', label: 'Gallery', icon: '🖼️' },
+    { id: 'social', label: 'Social Media', icon: '📱' },
+    { id: 'loading', label: 'Loading Page', icon: '🚀' },
     { id: 'data', label: 'System Data', icon: '💾' },
+    { id: 'sync', label: 'Cloud Sync', icon: '☁️' },
   ];
 
   return (
     <div className="max-w-6xl mx-auto h-full animate-fade-in">
        <header className="mb-8">
-          <h2 className="text-3xl font-black text-slate-800 tracking-tight">App Settings ⚙️</h2>
-          <p className="text-slate-500 font-medium">Global configuration and data management.</p>
+          <div className="flex items-center gap-3">
+            <h2 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+              <span>App Settings ⚙️</span>
+              {session && (
+                <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100 tracking-widest">
+                  {session}
+                </span>
+              )}
+            </h2>
+            {syncStatus === 'syncing' && (
+              <span className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-full animate-pulse border border-blue-100">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
+                Syncing...
+              </span>
+            )}
+            {syncStatus === 'synced' && (
+              <span className="flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full border border-emerald-100">
+                ✅
+              </span>
+            )}
+            {syncStatus === 'error' && (
+              <button 
+                onClick={() => onManualSync?.()}
+                className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded-full border border-red-100 hover:bg-red-100 transition-colors"
+              >
+                <span className="text-[10px]">⚠️</span>
+                Sync Error - Retry
+              </button>
+            )}
+          </div>
+          <p className="text-slate-500 font-medium tracking-tight">Global configuration and data management.</p>
        </header>
        <div className="flex flex-col lg:flex-row gap-8">
           <nav className="lg:w-64 space-y-2">
@@ -1149,7 +1568,10 @@ const Settings: React.FC<SettingsProps> = ({ settings, data, onUpdateSettings, o
               {activeTab === 'notifications' && renderNotifications()}
               {activeTab === 'fees' && renderFees()}
               {activeTab === 'slider' && renderSlider()}
+              {activeTab === 'social' && renderSocial()}
+              {activeTab === 'loading' && renderLoading()}
               {activeTab === 'data' && renderData()}
+              {activeTab === 'sync' && renderSync()}
           </div>
        </div>
     </div>

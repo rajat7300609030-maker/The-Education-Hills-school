@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Student, FeeRecord, AppSettings } from '../types';
 import AdSenseUnit from './AdSenseUnit';
 import { submitToFormspree } from '../lib/formspree';
+import { compressImage } from '../utils/imageUtils';
 
 interface StudentsProps {
   students: Student[];
@@ -19,6 +20,9 @@ interface StudentsProps {
   onViewParent: (student: Student) => void;
   initialEditingId?: string | null;
   onClearEditingId?: () => void;
+  syncStatus?: 'synced' | 'syncing' | 'error';
+  onManualSync?: () => Promise<void>;
+  session?: string;
 }
 
 type SortOption = 'name-asc' | 'name-desc' | 'id-asc' | 'id-desc' | 'date-new' | 'date-old' | 'fees-high' | 'fees-low';
@@ -38,7 +42,10 @@ const Students: React.FC<StudentsProps> = ({
     onViewProfile,
     onViewParent,
     initialEditingId,
-    onClearEditingId
+    onClearEditingId,
+    syncStatus = 'synced',
+    onManualSync,
+    session = '2024-25'
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('All');
@@ -138,8 +145,9 @@ const Students: React.FC<StudentsProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, photo: reader.result as string }));
+      reader.onloadend = async () => {
+        const compressed = await compressImage(reader.result as string, 400, 400, 0.7);
+        setFormData(prev => ({ ...prev, photo: compressed }));
       };
       reader.readAsDataURL(file);
     }
@@ -266,7 +274,36 @@ const Students: React.FC<StudentsProps> = ({
       )}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="animate-fade-in">
-          <h2 className="text-3xl font-bold text-slate-800">Students 🎓</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
+              <span>Students 🎓</span>
+              {session && (
+                <span className="text-xs font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-100 tracking-widest">
+                  {session}
+                </span>
+              )}
+            </h2>
+            {syncStatus === 'syncing' && (
+              <span className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-full animate-pulse border border-blue-100">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
+                Syncing...
+              </span>
+            )}
+            {syncStatus === 'synced' && (
+              <span className="flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full border border-emerald-100">
+                ✅
+              </span>
+            )}
+            {syncStatus === 'error' && (
+              <button 
+                onClick={() => onManualSync?.()}
+                className="flex items-center gap-1 px-2 py-1 bg-red-50 text-red-600 text-[10px] font-bold rounded-full border border-red-100 hover:bg-red-100 transition-colors"
+              >
+                <span className="text-[10px]">⚠️</span>
+                Sync Error - Retry
+              </button>
+            )}
+          </div>
           <p className="text-slate-500">Manage student enrollments, profiles and fees.</p>
         </div>
         <div className="flex gap-2 items-center">

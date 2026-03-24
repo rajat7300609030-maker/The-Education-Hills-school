@@ -151,7 +151,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+    <div className="min-h-screen w-full bg-slate-100 flex flex-col items-center justify-center p-4 relative overflow-y-auto overflow-x-hidden font-sans">
         
         {/* Background Decoration */}
         <div className="absolute top-0 left-0 w-full h-1/2 bg-indigo-600 rounded-b-[3rem] z-0 shadow-2xl"></div>
@@ -165,7 +165,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
             <div className="pt-8 pb-4 px-8 text-center flex flex-col items-center">
                 <div className="w-24 h-24 bg-white rounded-full p-2 shadow-lg mb-4 border-4 border-indigo-50">
                     <div className="w-full h-full rounded-full bg-slate-50 flex items-center justify-center overflow-hidden">
-                        {schoolData.logo ? (
+                        {schoolData?.logo ? (
                             <img src={schoolData.logo} alt="Logo" className="w-full h-full object-contain p-2" />
                         ) : (
                             <span className="text-4xl">🏫</span>
@@ -173,8 +173,8 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                     </div>
                 </div>
                 
-                <h1 className="text-xl font-black text-slate-800 leading-tight mb-1">{schoolData.name || "School Manager"}</h1>
-                {schoolData.motto && (
+                <h1 className="text-xl font-black text-slate-800 leading-tight mb-1">{schoolData?.name || "School Manager"}</h1>
+                {schoolData?.motto && (
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">"{schoolData.motto}"</p>
                 )}
             </div>
