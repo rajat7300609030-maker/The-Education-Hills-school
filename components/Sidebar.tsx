@@ -23,7 +23,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
     { id: ViewState.DASHBOARD, label: 'Dashboard', icon: '📊', visible: true },
     // Student specific labels and restricted views
     { id: ViewState.PARENT_PROFILE, label: 'Parent Group', icon: '👨‍👩‍👧‍👦', visible: isStudent },
-    { id: ViewState.STUDENT_PROFILE, label: 'Student Details', icon: '👤', visible: isStudent },
     { id: ViewState.FEES, label: 'Fees Manager', icon: '💰', visible: isStudent },
     
     // Admin only views
@@ -37,6 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
   const bottomItems = [
     { id: ViewState.SCHOOL_PROFILE, label: 'School Profile', icon: '🏫', visible: isAdmin },
     { id: ViewState.USER_PROFILE, label: 'My Profile', icon: '👤', visible: isAdmin },
+    { id: ViewState.STUDENT_PROFILE, label: 'My Profile', icon: '👤', visible: isStudent },
     { id: ViewState.SETTINGS, label: 'App Settings', icon: '⚙️', visible: isAdmin },
   ];
 
@@ -195,6 +195,15 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
             <>
                 <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-2 h-5">
                     Settings
+                </div>
+                {bottomItems.map(renderButton)}
+            </>
+        )}
+
+        {isStudent && (
+            <>
+                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-2 h-5">
+                    Account
                 </div>
                 {bottomItems.map(renderButton)}
             </>

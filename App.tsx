@@ -193,6 +193,27 @@ const App: React.FC = () => {
   const [dbSyncError, setDbSyncError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('synced');
 
+  const topBarUser = useMemo(() => {
+    if (userRole === 'STUDENT' && currentStudentId) {
+      const student = data.students.find(s => s.id === currentStudentId);
+      if (student) {
+        return {
+          name: student.name,
+          photo: student.photo,
+          role: `Student • ${student.grade}`,
+          email: student.email || '',
+          userId: student.id,
+          bio: `Student at ${data.schoolProfile.name}`,
+          dateOfBirth: student.dob || '',
+          contactNumber: student.phone || '',
+          address: student.address || '',
+          session: student.session || data.schoolProfile.currentSession
+        } as UserProfileData;
+      }
+    }
+    return data.userProfile;
+  }, [userRole, currentStudentId, data.students, data.userProfile, data.schoolProfile]);
+
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     if (data?.settings?.enableNotifications || type === 'error') {
         setNotification({ message, type });
@@ -494,8 +515,9 @@ const App: React.FC = () => {
     setData(prev => ({ ...prev, inquiries: [newInquiry, ...prev.inquiries] }));
     const { error } = await supabase.from('inquiries').insert(newInquiry);
     if (error) {
-        if (error.message.includes('does not exist')) {
-            console.warn("Inquiries table not found. Keeping in local state.");
+        if (error.message.includes('does not exist') || error.message.includes('schema cache')) {
+            console.warn("Inquiries table not found or schema cache issue. Keeping in local state.");
+            showNotification(`⚠️ Database Sync Issue: Inquiries table missing. Saved locally.`, 'info');
         } else {
             showNotification(`❌ Save Failed: ${error.message}`, 'error');
         }
@@ -507,15 +529,29 @@ const App: React.FC = () => {
   const handleUpdateInquiry = async (inquiry: Inquiry) => {
     setData(prev => ({ ...prev, inquiries: prev.inquiries.map(i => i.id === inquiry.id ? inquiry : i) }));
     const { error } = await supabase.from('inquiries').upsert(inquiry);
-    if (error) showNotification(`❌ Update Failed: ${error.message}`, 'error');
-    else showNotification(`✅ Status updated for ${inquiry.studentName}`, 'success');
+    if (error) {
+        if (error.message.includes('does not exist') || error.message.includes('schema cache')) {
+            showNotification(`⚠️ Update Saved Locally. Database sync issue.`, 'info');
+        } else {
+            showNotification(`❌ Update Failed: ${error.message}`, 'error');
+        }
+    } else {
+        showNotification(`✅ Status updated for ${inquiry.studentName}`, 'success');
+    }
   };
 
   const handleDeleteInquiry = async (id: string) => {
     setData(prev => ({ ...prev, inquiries: prev.inquiries.filter(i => i.id !== id) }));
     const { error } = await supabase.from('inquiries').delete().eq('id', id);
-    if (error) showNotification(`❌ Delete Failed: ${error.message}`, 'error');
-    else showNotification(`🗑️ Inquiry removed`, 'info');
+    if (error) {
+        if (error.message.includes('does not exist') || error.message.includes('schema cache')) {
+            showNotification(`🗑️ Inquiry removed locally. Database sync issue.`, 'info');
+        } else {
+            showNotification(`❌ Delete Failed: ${error.message}`, 'error');
+        }
+    } else {
+        showNotification(`🗑️ Inquiry removed`, 'info');
+    }
   };
 
   const handleConvertToStudent = async (inquiry: Inquiry) => {
@@ -907,6 +943,11 @@ const App: React.FC = () => {
           />
         );
       case ViewState.USER_PROFILE:
+        if (userRole === 'STUDENT') {
+            const student = sessionStudents.find(s => s.id === currentStudentId);
+            if (!student) return <div className="p-8 text-center text-slate-500 font-bold">Student not found.</div>;
+            return <StudentProfile student={student} fees={sessionFees} schoolData={data.schoolProfile} currency={currencySymbol} onBack={() => setCurrentView(ViewState.DASHBOARD)} onNavigateToFees={id => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }} onNavigateToEdit={(id) => { setStudentIdToEdit(id); setCurrentView(ViewState.STUDENTS); }} onDelete={(id) => { handleSoftDeleteStudent(id); setCurrentView(ViewState.STUDENTS); }} onUpdateStudent={handleEditStudent} onNotify={showNotification} userRole={userRole} />;
+        }
         return (
           <Profiles 
             type="USER" 
@@ -969,13 +1010,13 @@ const App: React.FC = () => {
         <AnimatedBackground view={currentView} />
         <TopBar 
           currentView={currentView} 
-          user={data.userProfile} 
+          user={topBarUser} 
           session={data.schoolProfile.currentSession} 
           notifications={notificationHistory} 
           onClearNotifications={handleClearNotifications} 
           isSidebarCollapsed={isSidebarCollapsed} 
           onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
-          onOpenProfile={() => setCurrentView(ViewState.USER_PROFILE)} 
+          onOpenProfile={() => setCurrentView(userRole === 'STUDENT' ? ViewState.STUDENT_PROFILE : ViewState.USER_PROFILE)} 
           userRole={userRole}
           syncStatus={syncStatus}
         />

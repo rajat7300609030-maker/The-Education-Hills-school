@@ -8,6 +8,7 @@ interface NotesBoardProps {
   onAddNote: (content: string, color: string) => void;
   onDeleteNote: (id: string) => void;
   onTogglePinNote: (id: string) => void;
+  isAdmin?: boolean;
 }
 
 const COLORS = [
@@ -19,14 +20,14 @@ const COLORS = [
   'bg-indigo-100 border-indigo-200 text-indigo-900',
 ];
 
-const NotesBoard: React.FC<NotesBoardProps> = ({ notes, onAddNote, onDeleteNote, onTogglePinNote }) => {
+const NotesBoard: React.FC<NotesBoardProps> = ({ notes, onAddNote, onDeleteNote, onTogglePinNote, isAdmin = false }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newContent, setNewContent] = useState('');
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newContent.trim()) {
+    if (newContent.trim() && isAdmin) {
       onAddNote(newContent.trim(), selectedColor);
       setNewContent('');
       setIsAdding(false);
@@ -53,17 +54,19 @@ const NotesBoard: React.FC<NotesBoardProps> = ({ notes, onAddNote, onDeleteNote,
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Live Institutional Updates</p>
           </div>
         </div>
-        <button 
-          onClick={() => setIsAdding(true)}
-          className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center hover:bg-amber-600 transition-all shadow-xl active:scale-90"
-        >
-          <Plus size={24} />
-        </button>
+        {isAdmin && (
+          <button 
+            onClick={() => setIsAdding(true)}
+            className="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center hover:bg-amber-600 transition-all shadow-xl active:scale-90"
+          >
+            <Plus size={24} />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto pr-2 space-y-4 relative z-10 custom-scrollbar">
         <AnimatePresence mode="popLayout">
-          {isAdding && (
+          {isAdding && isAdmin && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -121,20 +124,22 @@ const NotesBoard: React.FC<NotesBoardProps> = ({ notes, onAddNote, onDeleteNote,
               >
                 <div className="flex justify-between items-start gap-4">
                   <p className="text-sm font-bold leading-relaxed flex-1">{note.content}</p>
-                  <div className="flex flex-col gap-2 opacity-0 group-hover/note:opacity-100 transition-opacity">
-                    <button 
-                      onClick={() => onTogglePinNote(note.id)}
-                      className={`p-1.5 rounded-lg transition-all ${note.isPinned ? 'bg-slate-900 text-white' : 'hover:bg-black/5'}`}
-                    >
-                      <Pin size={14} className={note.isPinned ? 'fill-current' : ''} />
-                    </button>
-                    <button 
-                      onClick={() => onDeleteNote(note.id)}
-                      className="p-1.5 hover:bg-rose-500 hover:text-white rounded-lg transition-all"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex flex-col gap-2 opacity-0 group-hover/note:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => onTogglePinNote(note.id)}
+                        className={`p-1.5 rounded-lg transition-all ${note.isPinned ? 'bg-slate-900 text-white' : 'hover:bg-black/5'}`}
+                      >
+                        <Pin size={14} className={note.isPinned ? 'fill-current' : ''} />
+                      </button>
+                      <button 
+                        onClick={() => onDeleteNote(note.id)}
+                        className="p-1.5 hover:bg-rose-500 hover:text-white rounded-lg transition-all"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-4 flex items-center justify-between">
                   <span className="text-[8px] font-black uppercase tracking-widest opacity-40">

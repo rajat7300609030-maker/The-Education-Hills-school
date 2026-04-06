@@ -134,8 +134,25 @@ const Dashboard: React.FC<DashboardProps> = ({
   const activeExpenses = useMemo(() => data.expenses ? data.expenses.filter(e => !e.isDeleted && e.session === currentSession) : [], [data.expenses, currentSession]);
 
   // Global Financials
-  const totalRevenue = isAdmin ? activeFees.filter((f) => f.status === 'Paid').reduce((sum, f) => sum + f.amount, 0) : 0;
-  const totalExpected = isAdmin ? activeStudents.reduce((sum, s) => sum + (s.totalAgreedFees || 0) + (s.backLogs || 0), 0) : 0;
+  const totalRevenue = useMemo(() => {
+    if (isAdmin) {
+      return activeFees.filter((f) => f.status === 'Paid').reduce((sum, f) => sum + f.amount, 0);
+    } else if (currentStudentId) {
+      return activeFees.filter((f) => f.studentId === currentStudentId && f.status === 'Paid').reduce((sum, f) => sum + f.amount, 0);
+    }
+    return 0;
+  }, [activeFees, isAdmin, currentStudentId]);
+
+  const totalExpected = useMemo(() => {
+    if (isAdmin) {
+      return activeStudents.reduce((sum, s) => sum + (s.totalAgreedFees || 0) + (s.backLogs || 0), 0);
+    } else if (currentStudentId) {
+      const s = activeStudents.find(std => std.id === currentStudentId);
+      return s ? (s.totalAgreedFees || 0) + (s.backLogs || 0) : 0;
+    }
+    return 0;
+  }, [activeStudents, isAdmin, currentStudentId]);
+
   const totalDue = Math.max(0, totalExpected - totalRevenue);
   const totalExpenses = isAdmin ? activeExpenses.reduce((sum, e) => sum + e.amount, 0) : 0;
   const netProfit = totalRevenue - totalExpenses;
@@ -1046,6 +1063,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                           onAddNote={onAddNote} 
                           onDeleteNote={onDeleteNote} 
                           onTogglePinNote={onTogglePinNote} 
+                          isAdmin={isAdmin}
                         />
                     </div>
                 </div>
@@ -1152,19 +1170,122 @@ const Dashboard: React.FC<DashboardProps> = ({
       )}
 
       {!isAdmin && (
-          <div className="bg-gradient-to-br from-indigo-900 to-indigo-950 rounded-[3rem] p-10 shadow-2xl text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-              <h3 className="text-3xl font-black mb-8 flex items-center gap-3"><span>💰</span> My Fee Summary</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 relative z-10">
-                   <div className="bg-white/10 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-md shadow-inner">
-                        <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-3">Remaining Balance</p>
-                        <p className="text-4xl font-black tracking-tight"><AnimatedNumber value={totalDue} currency={currency} /></p>
-                   </div>
-                   <div className="bg-emerald-500/10 p-8 rounded-[2.5rem] border border-emerald-500/20 backdrop-blur-md shadow-inner">
-                        <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest mb-3">Successfully Paid</p>
-                        <p className="text-4xl font-black tracking-tight"><AnimatedNumber value={totalRevenue} currency={currency} /></p>
-                   </div>
-              </div>
+          <div className="space-y-8">
+            <div className="bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-950 rounded-[3rem] p-10 shadow-2xl text-white relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none group-hover:bg-indigo-500/20 transition-colors duration-1000"></div>
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
+                
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between mb-12 gap-6">
+                    <div>
+                        <h3 className="text-3xl font-black mb-2 flex items-center gap-3">
+                            <span className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-2xl border border-white/10 shadow-inner">💰</span> 
+                            My Fee Summary
+                        </h3>
+                        <p className="text-indigo-300/60 text-[10px] font-black uppercase tracking-[0.3em] ml-1">Session {currentSession} • Financial Overview</p>
+                    </div>
+                    <div className="flex items-center gap-3 bg-white/5 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/10 shadow-xl">
+                        <div className="text-right">
+                            <p className="text-[8px] font-black text-indigo-300 uppercase tracking-widest mb-0.5">Payment Progress</p>
+                            <p className="text-xl font-black text-white tracking-tighter">{sessionProgress}%</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
+                            <TrendingUp className="w-6 h-6 text-indigo-400" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 relative z-10 mb-10">
+                     <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-md shadow-inner hover:bg-white/10 transition-all duration-500 group/card">
+                          <div className="flex items-center gap-3 mb-4">
+                              <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-300 border border-indigo-500/20 group-hover/card:scale-110 transition-transform">🎓</div>
+                              <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Total Fees</p>
+                          </div>
+                          <p className="text-4xl font-black tracking-tight group-hover/card:translate-x-1 transition-transform"><AnimatedNumber value={totalExpected} currency={currency} /></p>
+                          <p className="text-[8px] font-bold text-indigo-300/40 uppercase tracking-widest mt-2">Agreed + Backlogs</p>
+                     </div>
+                     <div className="bg-emerald-500/5 p-8 rounded-[2.5rem] border border-emerald-500/10 backdrop-blur-md shadow-inner hover:bg-emerald-500/10 transition-all duration-500 group/card">
+                          <div className="flex items-center gap-3 mb-4">
+                              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-300 border border-emerald-500/20 group-hover/card:scale-110 transition-transform">✅</div>
+                              <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest">Successfully Paid</p>
+                          </div>
+                          <p className="text-4xl font-black tracking-tight group-hover/card:translate-x-1 transition-transform text-emerald-400"><AnimatedNumber value={totalRevenue} currency={currency} /></p>
+                          <p className="text-[8px] font-bold text-emerald-300/40 uppercase tracking-widest mt-2">Verified Collections</p>
+                     </div>
+                     <div className="bg-rose-500/5 p-8 rounded-[2.5rem] border border-rose-500/10 backdrop-blur-md shadow-inner hover:bg-rose-500/10 transition-all duration-500 group/card">
+                          <div className="flex items-center gap-3 mb-4">
+                              <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-300 border border-rose-500/20 group-hover/card:scale-110 transition-transform">⏳</div>
+                              <p className="text-[10px] font-black text-rose-300 uppercase tracking-widest">Remaining Balance</p>
+                          </div>
+                          <p className="text-4xl font-black tracking-tight group-hover/card:translate-x-1 transition-transform text-rose-400"><AnimatedNumber value={totalDue} currency={currency} /></p>
+                          <p className="text-[8px] font-bold text-rose-300/40 uppercase tracking-widest mt-2">Outstanding Dues</p>
+                     </div>
+                </div>
+
+                <div className="relative h-3 w-full bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/10 shadow-inner">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer"></div>
+                    <div 
+                        className="h-full bg-gradient-to-r from-indigo-500 via-emerald-500 to-indigo-400 rounded-full transition-all duration-1000 shadow-[0_0_20px_rgba(99,102,241,0.4)] relative" 
+                        style={{ width: `${sessionProgress}%` }}
+                    >
+                        <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.1)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.1)_50%,rgba(255,255,255,0.1)_75%,transparent_75%,transparent)] bg-[length:20px_20px] animate-stripe"></div>
+                    </div>
+                </div>
+            </div>
+
+            {/* My Recent Payments List */}
+            <div className="bg-white rounded-[3rem] shadow-xl border border-slate-100 p-10 group overflow-hidden relative hover:shadow-2xl transition-all duration-500">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/30 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+                <div className="relative z-10 flex items-center justify-between mb-10">
+                    <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center text-3xl shadow-xl shadow-slate-200 border border-slate-800 group-hover:rotate-3 transition-transform">
+                            🧾
+                        </div>
+                        <div>
+                            <h3 className="text-xl font-black text-slate-800 tracking-tighter uppercase leading-none">My Recent Payments</h3>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Transaction History</p>
+                        </div>
+                    </div>
+                    <button onClick={onNavigateToFees} className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100 shadow-sm">View Ledger ➜</button>
+                </div>
+
+                <div className="space-y-4 relative z-10">
+                    {activeFees.filter(f => f.studentId === currentStudentId && f.status === 'Paid').length > 0 ? (
+                        activeFees
+                            .filter(f => f.studentId === currentStudentId && f.status === 'Paid')
+                            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                            .slice(0, 5)
+                            .map((f) => (
+                                <div key={f.id} className="flex items-center justify-between p-5 bg-slate-50/50 rounded-2xl border border-slate-100 hover:bg-white hover:shadow-xl hover:border-indigo-100 transition-all group/item cursor-default">
+                                    <div className="flex items-center gap-5">
+                                        <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-2xl shadow-md border border-slate-50 group-hover/item:scale-110 transition-transform">
+                                            {getFeeIcon(f.type)}
+                                        </div>
+                                        <div>
+                                            <span className="text-sm font-black text-slate-800 uppercase tracking-tight block">{f.type} Fee</span>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{new Date(f.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                                <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                                <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Verified</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-lg font-black text-slate-900 block tracking-tighter">{currency}{f.amount.toLocaleString()}</span>
+                                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{f.paymentMethod || 'Cash'}</span>
+                                    </div>
+                                </div>
+                            ))
+                    ) : (
+                        <div className="py-20 flex flex-col items-center justify-center text-center">
+                            <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-6 border-2 border-dashed border-slate-200">
+                                <Receipt className="w-8 h-8 text-slate-200" />
+                            </div>
+                            <h4 className="text-lg font-black text-slate-800 uppercase tracking-widest mb-2">No payments found</h4>
+                            <p className="text-[11px] text-slate-400 max-w-[220px] leading-relaxed">You haven't made any fee payments in the current session yet.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
           </div>
       )}
 
