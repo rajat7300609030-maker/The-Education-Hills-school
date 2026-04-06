@@ -15,12 +15,15 @@ import ParentProfile from './components/ParentProfile';
 import NotificationToast from './components/NotificationToast';
 import LockScreen from './components/LockScreen';
 import LandingPage from './components/LandingPage';
-import { ViewState, AppData, Student, Employee, FeeRecord, ExpenseRecord, AppSettings, UserProfileData, AppNotification, Note } from './types';
+import NewInquiry from './components/NewInquiry';
+import AnimatedBackground from './components/AnimatedBackground';
+import { ViewState, AppData, Student, Employee, Inquiry, FeeRecord, ExpenseRecord, AppSettings, UserProfileData, AppNotification, Note } from './types';
 import { supabase } from './lib/supabase';
 
 const INITIAL_DATA: AppData = {
   students: [],
   employees: [],
+  inquiries: [],
   classes: ['10-A', '11-B', '12-A'],
   feeCategories: ['Tuition', 'Bus', 'Books', 'Uniform'],
   fees: [],
@@ -35,7 +38,7 @@ const INITIAL_DATA: AppData = {
     website: 'www.educationhills.edu',
     sessions: ['2024-2025', '2025-2026'],
     currentSession: '2024-2025',
-    logo: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?auto=format&fit=crop&w=100&h=100&q=80',
+    logo: '',
     affiliationNumber: 'ST-90210',
     principalName: 'Dr. Jane Smith',
     board: 'C.B.S.E',
@@ -45,7 +48,10 @@ const INITIAL_DATA: AppData = {
     termsAndConditions: '',
     authorizedSignature: '',
     departments: ['Science', 'Commerce', 'Arts'],
-    notice: ''
+    notice: '',
+    leadershipList: [],
+    campusAcres: '25',
+    successRate: '99.8%'
   },
   userProfile: {
     name: 'Administrator',
@@ -57,7 +63,12 @@ const INITIAL_DATA: AppData = {
     contactNumber: '+1 987 654 321',
     joiningDate: new Date().toISOString().split('T')[0],
     address: 'Faculty Residence, Block A',
-    photo: ''
+    photo: '',
+    experience: '28+ Years',
+    degree: 'Ph.D. Management',
+    session: '2024 - 2025',
+    specialization: 'Educational Strategy',
+    office: 'Admin Block, Suite 101'
   },
   settings: {
     theme: 'light',
@@ -75,14 +86,7 @@ const INITIAL_DATA: AppData = {
       enabled: true,
       autoplay: true,
       interval: 4000,
-      images: [
-          {
-              id: 'default-1',
-              url: 'https://images.unsplash.com/photo-1523050853063-913ec9823dd2?auto=format&fit=crop&w=1200&q=80',
-              title: 'Welcome to Our Campus',
-              description: 'Providing a world-class environment for the next generation of leaders.'
-          }
-      ]
+      images: []
     },
     security: {
         enableAppLock: true,
@@ -178,6 +182,7 @@ const App: React.FC = () => {
   const [notificationHistory, setNotificationHistory] = useState<AppNotification[]>([]);
   const [isLocked, setIsLocked] = useState(true);
   const [showLanding, setShowLanding] = useState(true);
+  const [loginTab, setLoginTab] = useState<'ADMIN' | 'STUDENT' | undefined>(undefined);
   const [userRole, setUserRole] = useState<'ADMIN' | 'STUDENT'>('ADMIN');
   const [currentStudentId, setCurrentStudentId] = useState<string | undefined>(undefined);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -210,6 +215,7 @@ const App: React.FC = () => {
         const feesResp = await supabase.from('fees').select('*');
         const expensesResp = await supabase.from('expenses').select('*');
         const notesResp = await supabase.from('notes').select('*').order('createdAt', { ascending: false });
+        const inquiriesResp = await supabase.from('inquiries').select('*').order('date', { ascending: false });
         
         let configResp = null;
         try {
@@ -246,6 +252,7 @@ const App: React.FC = () => {
         const fetchedEmployees = (employeesResp.data || INITIAL_DATA.employees) as Employee[];
         const fetchedExpenses = (expensesResp.data || INITIAL_DATA.expenses) as ExpenseRecord[];
         const fetchedNotes = (notesResp.data || INITIAL_DATA.notes) as Note[];
+        const fetchedInquiries = (inquiriesResp.data || []) as Inquiry[];
 
         setData(prev => {
           // Only merge config if it's newer or if we don't have local data
@@ -261,6 +268,7 @@ const App: React.FC = () => {
             fees: fetchedFees.length > 0 ? fetchedFees : prev.fees,
             expenses: fetchedExpenses.length > 0 ? fetchedExpenses : prev.expenses,
             notes: fetchedNotes.length > 0 ? fetchedNotes : prev.notes,
+            inquiries: fetchedInquiries.length > 0 ? fetchedInquiries : prev.inquiries,
             schoolProfile: shouldOverwriteConfig ? {
               ...prev.schoolProfile,
               ...(configResp?.data?.school_profile || {})
@@ -474,6 +482,87 @@ const App: React.FC = () => {
       setSyncStatus('synced');
       showNotification(`✅ Registered ${newStudent.name}`, 'success');
     }
+  };
+
+  const handleAddInquiry = async (inquiry: Omit<Inquiry, 'id' | 'date' | 'status'>) => {
+    const newInquiry: Inquiry = {
+      ...inquiry,
+      id: `INQ-${Date.now()}`,
+      date: new Date().toISOString(),
+      status: 'Pending'
+    };
+    setData(prev => ({ ...prev, inquiries: [newInquiry, ...prev.inquiries] }));
+    const { error } = await supabase.from('inquiries').insert(newInquiry);
+    if (error) {
+        if (error.message.includes('does not exist')) {
+            console.warn("Inquiries table not found. Keeping in local state.");
+        } else {
+            showNotification(`❌ Save Failed: ${error.message}`, 'error');
+        }
+    } else {
+        showNotification(`✅ Inquiry for ${newInquiry.studentName} Submitted!`, 'success');
+    }
+  };
+
+  const handleUpdateInquiry = async (inquiry: Inquiry) => {
+    setData(prev => ({ ...prev, inquiries: prev.inquiries.map(i => i.id === inquiry.id ? inquiry : i) }));
+    const { error } = await supabase.from('inquiries').upsert(inquiry);
+    if (error) showNotification(`❌ Update Failed: ${error.message}`, 'error');
+    else showNotification(`✅ Status updated for ${inquiry.studentName}`, 'success');
+  };
+
+  const handleDeleteInquiry = async (id: string) => {
+    setData(prev => ({ ...prev, inquiries: prev.inquiries.filter(i => i.id !== id) }));
+    const { error } = await supabase.from('inquiries').delete().eq('id', id);
+    if (error) showNotification(`❌ Delete Failed: ${error.message}`, 'error');
+    else showNotification(`🗑️ Inquiry removed`, 'info');
+  };
+
+  const handleConvertToStudent = async (inquiry: Inquiry) => {
+    // Try to parse DOB and Address from message if it follows the pattern
+    let dob = '';
+    let address = '';
+    if (inquiry.message?.includes('Address:')) {
+      const parts = inquiry.message.split('Address: ')[1]?.split('. DOB: ');
+      if (parts) {
+        address = parts[0] || '';
+        dob = parts[1] || '';
+      }
+    }
+
+    const nextNum = (data.students.length > 0 ? Math.max(...data.students.map(s => parseInt((s.id || '').replace(/\D/g, '')) || 0)) : 0) + 1;
+    const newId = `STU${nextNum.toString().padStart(3, '0')}`;
+    
+    const newStudent: Student = {
+      id: newId,
+      name: inquiry.studentName,
+      grade: inquiry.grade,
+      parentName: inquiry.parentName,
+      phone: inquiry.phone,
+      email: inquiry.email || '',
+      enrollmentDate: new Date().toISOString().split('T')[0],
+      isDeleted: false,
+      dob: dob || '',
+      address: address || '',
+      session: data.schoolProfile.currentSession
+    };
+
+    // 1. Add Student
+    setData(prev => ({ ...prev, students: [newStudent, ...prev.students] }));
+    const { error: stuError } = await supabase.from('students').insert(newStudent);
+    
+    if (stuError) {
+      showNotification(`❌ Conversion Failed: ${stuError.message}`, 'error');
+      return;
+    }
+
+    // 2. Delete Inquiry
+    await handleDeleteInquiry(inquiry.id);
+
+    // 3. Navigate and notify
+    showNotification(`🎓 ${inquiry.studentName} enrolled successfully!`, 'success');
+    setStudentIdToEdit(newId);
+    setCurrentView(ViewState.STUDENTS);
   };
 
   const handleAddEmployee = async (employee: Omit<Employee, 'id' | 'isDeleted'>) => {
@@ -750,7 +839,7 @@ const App: React.FC = () => {
           onManualSync={handleManualSync} 
         />;
       case ViewState.STUDENTS:
-        return <Students students={sessionStudents} classes={data.classes} fees={sessionFees} currency={currencySymbol} settings={data.settings} onAddStudent={handleAddStudent} onEditStudent={handleEditStudent} onDeleteStudent={handleSoftDeleteStudent} onAddClass={(name) => setData(prev => ({ ...prev, classes: [...prev.classes, name] }))} onDeleteClass={(name) => setData(prev => ({ ...prev, classes: prev.classes.filter(c => c !== name) }))} onNavigateToFees={id => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }} onViewProfile={id => { setSelectedStudentId(id); setCurrentView(ViewState.STUDENT_PROFILE); }} onViewParent={s => { setSelectedParent({ name: s.parentName, phone: s.phone, address: s.address || '' }); setCurrentView(ViewState.PARENT_PROFILE); }} initialEditingId={studentIdToEdit} onClearEditingId={() => setStudentIdToEdit(null)} syncStatus={syncStatus} onManualSync={handleManualSync} session={data.schoolProfile.currentSession} />;
+        return <Students students={sessionStudents} classes={data.classes} fees={sessionFees} currency={currencySymbol} settings={data.settings} onAddStudent={handleAddStudent} onEditStudent={handleEditStudent} onDeleteStudent={handleSoftDeleteStudent} onAddClass={(name) => setData(prev => ({ ...prev, classes: [...prev.classes, name] }))} onDeleteClass={(name) => setData(prev => ({ ...prev, classes: prev.classes.filter(c => c !== name) }))} onNavigateToFees={id => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }} onViewProfile={id => { setSelectedStudentId(id); setCurrentView(ViewState.STUDENT_PROFILE); }} onViewParent={s => { setSelectedParent({ name: s.parentName, phone: s.phone, address: s.address || '' }); setCurrentView(ViewState.PARENT_PROFILE); }} onNavigateToInquiry={() => setCurrentView(ViewState.NEW_INQUIRY)} initialEditingId={studentIdToEdit} onClearEditingId={() => setStudentIdToEdit(null)} syncStatus={syncStatus} onManualSync={handleManualSync} session={data.schoolProfile.currentSession} />;
       case ViewState.EMPLOYEES:
         return <Employees employees={sessionEmployees} currency={currencySymbol} onAddEmployee={handleAddEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={handleDeleteEmployee} onViewProfile={id => { setSelectedEmployeeId(id); setCurrentView(ViewState.EMPLOYEE_PROFILE); }} onRecordPayment={handleRecordEmployeePayment} onNotify={showNotification} syncStatus={syncStatus} onManualSync={handleManualSync} session={data.schoolProfile.currentSession} />;
       case ViewState.EMPLOYEE_PROFILE:
@@ -774,7 +863,20 @@ const App: React.FC = () => {
                 if (s) parentData = { name: s.parentName, phone: s.phone, address: s.address || '' };
             }
             if (!parentData) return <div className="p-8 text-center text-slate-500 font-bold">Parent data not available.</div>;
-            return <ParentProfile parentName={parentData.name} parentPhone={parentData.phone} parentAddress={parentData.address} students={sessionStudents} fees={sessionFees} currency={currencySymbol} onBack={() => setCurrentView(userRole === 'STUDENT' ? ViewState.DASHBOARD : ViewState.STUDENTS)} onNavigateToStudent={id => { setSelectedStudentId(id); setCurrentView(ViewState.STUDENT_PROFILE); }} onNavigateToFees={(studentId) => { if (studentId) setSelectedStudentId(studentId); setCurrentView(ViewState.FEES); }} userRole={userRole} />;
+            return <ParentProfile 
+              parentName={parentData.name} 
+              parentPhone={parentData.phone} 
+              parentAddress={parentData.address} 
+              students={sessionStudents} 
+              fees={sessionFees} 
+              currency={currencySymbol} 
+              schoolProfile={data.schoolProfile}
+              settings={data.settings}
+              onBack={() => setCurrentView(userRole === 'STUDENT' ? ViewState.DASHBOARD : ViewState.STUDENTS)} 
+              onNavigateToStudent={id => { setSelectedStudentId(id); setCurrentView(ViewState.STUDENT_PROFILE); }} 
+              onNavigateToFees={(studentId) => { if (studentId) setSelectedStudentId(studentId); setCurrentView(ViewState.FEES); }} 
+              userRole={userRole} 
+            />;
         }
       case ViewState.FEES:
         {
@@ -833,24 +935,38 @@ const App: React.FC = () => {
             session={data.schoolProfile.currentSession}
           />
         );
+      case ViewState.NEW_INQUIRY:
+        return (
+          <NewInquiry 
+            classes={data.classes} 
+            inquiries={data.inquiries}
+            onAddInquiry={handleAddInquiry}
+            onUpdateInquiry={handleUpdateInquiry}
+            onDeleteInquiry={handleDeleteInquiry}
+            onConvertToStudent={handleConvertToStudent}
+            onBack={() => setCurrentView(ViewState.STUDENTS)} 
+            onNotify={showNotification} 
+          />
+        );
       default:
         return <div className="p-8 text-center text-slate-500 font-bold">Please select an option.</div>;
     }
   };
 
   if (showLanding && isLocked) {
-      return <LandingPage onLogin={() => setShowLanding(false)} notes={data.notes} schoolProfile={data.schoolProfile} socialMedia={data.settings.socialMedia} landingPageSettings={data.settings.landingPage} />;
+      return <LandingPage onLogin={(role) => { setLoginTab(role); setShowLanding(false); }} notes={data.notes} schoolProfile={data.schoolProfile as any} socialMedia={data.settings.socialMedia} landingPageSettings={data.settings.landingPage} userProfile={data.userProfile} imageSlider={data.settings.imageSlider} students={data.students} employees={data.employees} />;
   }
 
   if (isLocked) {
-      return <LockScreen schoolData={data.schoolProfile} userData={data.userProfile} students={data.students} classes={data.classes} correctPin={data.settings.security.pin} onUnlock={(role, id) => { setIsLocked(false); setUserRole(role); setCurrentStudentId(id); if (role === 'STUDENT') setCurrentView(ViewState.DASHBOARD); }} onAddStudent={handleAddStudent} />;
+      return <LockScreen schoolData={data.schoolProfile} userData={data.userProfile} students={data.students} classes={data.classes} correctPin={data.settings.security.pin} initialTab={loginTab} onUnlock={(role, id) => { setIsLocked(false); setUserRole(role); setCurrentStudentId(id); if (role === 'STUDENT') setCurrentView(ViewState.DASHBOARD); }} onAddInquiry={(inq) => handleAddInquiry({ studentName: inq.name, grade: inq.grade, parentName: inq.parentName, phone: inq.phone, email: '', message: `Initial Admission Application. Address: ${inq.address}. DOB: ${inq.dob}` })} onBackToLanding={() => setShowLanding(true)} />;
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
+    <div className="flex h-screen bg-transparent font-sans text-slate-900 overflow-hidden">
       {notification && <NotificationToast message={notification.message} type={notification.type} styleVariant={data.settings.notificationStyle} onClose={() => setNotification(null)} />}
       <Sidebar currentView={currentView} onChangeView={view => { setCurrentView(view); if (userRole !== 'STUDENT') { setSelectedStudentId(null); setSelectedParent(null); } }} isCollapsed={isSidebarCollapsed} onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} schoolProfile={data.schoolProfile} settings={data.settings} userRole={userRole} onLogout={() => setIsLocked(true)} />
-      <main className="flex-1 overflow-y-auto flex flex-col relative bg-slate-50">
+      <main className="flex-1 overflow-y-auto flex flex-col relative bg-transparent">
+        <AnimatedBackground view={currentView} />
         <TopBar 
           currentView={currentView} 
           user={data.userProfile} 

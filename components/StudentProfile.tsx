@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { motion } from 'motion/react';
 import { Student, FeeRecord, SchoolProfileData } from '../types';
 
 interface StudentProfileProps {
@@ -267,73 +268,127 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* LEFT COLUMN: BASIC PROFILE */}
           <div className="lg:col-span-4 space-y-6">
-              <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden relative">
-                  <div className="h-28 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 relative">
-                      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDQwIDQwIiBvcGFjaXR5PSIwLjEiPjxjaXJjbGUgY3g9IjIwIiBjeT0iMjAiIHI9IjEiIGZpbGw9IiNmZmYiLz48L3N2Zz4=')] opacity-30"></div>
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 overflow-hidden relative group"
+              >
+                  {/* Dynamic Animated Header */}
+                  <div className="h-32 bg-gradient-to-br from-indigo-600 via-purple-600 to-blue-600 relative overflow-hidden">
+                      <motion.div 
+                        animate={{ 
+                          scale: [1, 1.2, 1],
+                          rotate: [0, 90, 0],
+                        }}
+                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                        className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"
+                      />
+                      <motion.div 
+                        animate={{ 
+                          scale: [1, 1.5, 1],
+                          x: [0, 50, 0],
+                        }}
+                        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+                        className="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-400/20 rounded-full blur-xl"
+                      />
+                      <div className="absolute inset-0 opacity-20" style={{ backgroundImage: `url("${SVG_TEXTURE}")` }}></div>
+                      
+                      {/* Decorative Badge */}
+                      <div className="absolute top-4 right-4 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full border border-white/30 text-[10px] font-black text-white uppercase tracking-widest z-20">
+                          Active Student
+                      </div>
                   </div>
                   
-                  <div className="px-6 pb-6 relative">
-                      <div className="flex justify-center -mt-14 mb-4">
-                          <div className="w-28 h-28 rounded-full border-4 border-white bg-slate-100 shadow-md overflow-hidden flex items-center justify-center text-5xl relative z-10">
-                              {student.photo ? (
-                                  <img src={student.photo} alt={student.name} className="w-full h-full object-cover" />
-                              ) : (
-                                  <span>{student.name.charAt(0)}</span>
-                              )}
+                  <div className="px-8 pb-8 relative">
+                      {/* Profile Photo with Enhanced Design */}
+                      <div className="flex justify-center -mt-16 mb-6">
+                          <div className="relative group/photo">
+                              <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-[2.5rem] blur-lg opacity-40 group-hover/photo:opacity-60 transition-opacity"></div>
+                              <div className="w-32 h-32 rounded-[2.5rem] border-4 border-white bg-slate-100 shadow-2xl overflow-hidden flex items-center justify-center text-5xl relative z-10 transition-transform group-hover/photo:scale-105 duration-500">
+                                  {student.photo ? (
+                                      <img src={student.photo} alt={student.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                      <span className="text-slate-300 font-black">{student.name.charAt(0)}</span>
+                                  )}
+                              </div>
+                              {/* Floating Icon */}
+                              <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-2xl shadow-xl border border-slate-100 flex items-center justify-center text-xl z-20 animate-bounce">
+                                  🎓
+                              </div>
                           </div>
                       </div>
                       
-                      <div className="text-center mb-8 border-b border-slate-50 pb-6">
-                          <h2 className="text-2xl font-black text-slate-800 leading-tight">{student.name}</h2>
-                          <div className="flex justify-center flex-wrap gap-2 mt-3">
-                              <span className="px-2.5 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg border border-slate-200">
+                      <div className="text-center mb-10">
+                          <h2 className="text-3xl font-black text-slate-800 leading-tight tracking-tight">{student.name}</h2>
+                          <div className="flex justify-center items-center gap-3 mt-4">
+                              <div className="px-4 py-1.5 bg-indigo-50 text-indigo-600 text-[11px] font-black rounded-2xl border border-indigo-100 shadow-sm uppercase tracking-widest">
                                   ID: {student.id}
-                              </span>
-                              <span className="px-2.5 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg border border-indigo-100">
+                              </div>
+                              <div className="w-1.5 h-1.5 rounded-full bg-slate-200"></div>
+                              <div className="px-4 py-1.5 bg-purple-50 text-purple-600 text-[11px] font-black rounded-2xl border border-purple-100 shadow-sm uppercase tracking-widest">
                                   Class {student.grade}
-                              </span>
+                              </div>
                           </div>
                       </div>
 
-                      <div className="space-y-6">
-                          <div>
-                              <h4 className="text-xs font-extrabold text-slate-300 uppercase tracking-widest mb-3">Contact Details</h4>
-                              <div className="space-y-4">
-                                  <DetailRow icon="👨‍👩‍👧‍👦" label="Guardian" value={student.parentName} />
-                                  <DetailRow icon="📞" label="Phone" value={student.phone} isLink />
-                                  <DetailRow icon="🏠" label="Address" value={student.address} />
+                      <div className="space-y-8">
+                          <div className="relative">
+                              <div className="absolute -left-4 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500/50 to-transparent rounded-full"></div>
+                              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-5 flex items-center gap-2">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                                  Contact Information
+                              </h4>
+                              <div className="space-y-5">
+                                  <DetailRow icon="👨‍👩‍👧‍👦" label="Primary Guardian" value={student.parentName} />
+                                  <DetailRow icon="📞" label="Mobile Number" value={student.phone} isLink />
+                                  <DetailRow icon="🏠" label="Residential Address" value={student.address} />
                               </div>
                           </div>
                       </div>
                   </div>
-              </div>
 
-              <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
-                   <h3 className="font-bold text-sm text-slate-400 uppercase tracking-widest mb-4">Academic Timeline</h3>
-                   <div className="space-y-4">
+                  {/* Bottom Decorative Bar */}
+                  <div className="h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 opacity-50"></div>
+              </motion.div>
+
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100 relative overflow-hidden group"
+              >
+                   <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform"></div>
+                   <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.4em] mb-6 flex items-center gap-3">
+                       <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                       Academic Timeline
+                   </h3>
+                   <div className="space-y-5 relative z-10">
                        <DetailRow icon="📅" label="Enrollment Date" value={formatDate(student.enrollmentDate)} />
                        <DetailRow icon="🎂" label="Date of Birth" value={formatDate(student.dob)} />
-                       <div className="flex items-start gap-3 text-sm">
-                           <span className="w-8 h-8 rounded-lg flex items-center justify-center text-lg border shrink-0 mt-0.5 bg-slate-50 border-slate-100">🗓️</span>
+                       <div className="flex items-start gap-4 text-sm group/row">
+                           <span className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl border shrink-0 bg-slate-50 border-slate-100 group-hover/row:bg-indigo-50 group-hover/row:border-indigo-100 transition-colors">🗓️</span>
                            <div className="min-w-0 flex-1">
-                               <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Academic Session</p>
+                               <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Academic Session</p>
                                {isAdmin ? (
-                                   <select 
-                                       value={student.session || schoolData.currentSession}
-                                       onChange={(e) => handleSessionChange(e.target.value)}
-                                       className="w-full mt-1 p-1.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500"
-                                   >
-                                       {schoolData.sessions.map(s => (
-                                           <option key={s} value={s}>{s}</option>
-                                       ))}
-                                   </select>
+                                   <div className="relative">
+                                       <select 
+                                           value={student.session || schoolData.currentSession}
+                                           onChange={(e) => handleSessionChange(e.target.value)}
+                                           className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-black text-xs text-indigo-600 outline-none focus:ring-4 focus:ring-indigo-500/10 appearance-none cursor-pointer"
+                                       >
+                                           {schoolData.sessions.map(s => (
+                                               <option key={s} value={s}>{s}</option>
+                                           ))}
+                                       </select>
+                                       <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-400 text-[10px]">▼</div>
+                                   </div>
                                ) : (
-                                   <p className="font-bold truncate text-slate-700">{student.session || schoolData.currentSession}</p>
+                                   <p className="font-black text-sm text-slate-700">{student.session || schoolData.currentSession}</p>
                                )}
                            </div>
                        </div>
                    </div>
-              </div>
+              </motion.div>
           </div>
 
           {/* RIGHT COLUMN: DOCUMENT AREA & FEE STATUS */}

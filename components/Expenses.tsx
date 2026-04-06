@@ -352,8 +352,8 @@ const Expenses: React.FC<ExpensesProps> = ({
       </div>
 
        {/* --- EXPENSE HISTORY --- */}
-       <div className="bg-white rounded-[3rem] p-8 shadow-sm border border-slate-100 mb-6 animate-fade-in transition-all">
-        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8">
+       <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 mb-6 animate-fade-in transition-all">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
             <div className="flex items-center gap-4 shrink-0">
                 <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center text-2xl shadow-inner border border-rose-100">
                     📉
@@ -396,12 +396,12 @@ const Expenses: React.FC<ExpensesProps> = ({
         </div>
 
         {/* --- PREMIUM GLOWING EXPENSE SUMMARY BANNER --- */}
-        <div className="mb-8 relative group animate-slide-up" style={{ animationDelay: '100ms' }}>
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-rose-950 to-slate-900 rounded-[2rem] shadow-2xl transition-transform duration-700 group-hover:scale-[1.002]"></div>
-            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] rounded-[2rem]"></div>
-            <div className="absolute -inset-1 bg-gradient-to-r from-rose-500/10 via-orange-500/10 to-rose-500/10 rounded-[2.1rem] blur-2xl opacity-40 pointer-events-none"></div>
+        <div className="mb-6 relative group animate-slide-up" style={{ animationDelay: '100ms' }}>
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-rose-950 to-slate-900 rounded-[1.5rem] shadow-2xl transition-transform duration-700 group-hover:scale-[1.002]"></div>
+            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] rounded-[1.5rem]"></div>
+            <div className="absolute -inset-1 bg-gradient-to-r from-rose-500/10 via-orange-500/10 to-rose-500/10 rounded-[1.6rem] blur-2xl opacity-40 pointer-events-none"></div>
             
-            <div className="relative p-6 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="relative p-4 flex flex-col md:flex-row items-center justify-between gap-6">
                 {/* Total Expenditure Section */}
                 <div className="flex items-center gap-5 w-full md:w-auto">
                     <div className="w-16 h-16 bg-white/10 backdrop-blur-3xl rounded-[1.25rem] flex items-center justify-center text-3xl border border-white/20 shadow-inner text-white shrink-0 animate-pulse">
@@ -446,7 +446,7 @@ const Expenses: React.FC<ExpensesProps> = ({
             </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 min-h-[400px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
              {filteredHistory.length > 0 ? (
                 filteredHistory.map(expense => {
                     const isActive = activeExpenseId === expense.id;
@@ -454,32 +454,32 @@ const Expenses: React.FC<ExpensesProps> = ({
                         <div 
                             key={expense.id} 
                             onClick={() => setActiveExpenseId(isActive ? null : expense.id)} 
-                            className={`group relative bg-white rounded-[2rem] p-6 border-2 transition-all duration-500 cursor-pointer overflow-hidden ${
+                            className={`group relative bg-white rounded-[1.5rem] p-4 border-2 transition-all duration-500 cursor-pointer overflow-hidden ${
                                 isActive 
                                 ? 'border-rose-500 shadow-2xl scale-[1.05] z-30' 
                                 : 'border-slate-50 shadow-lg hover:border-rose-100 hover:shadow-2xl hover:-translate-y-1'
                             }`}
                         >
-                            <div className={`absolute top-0 right-0 w-24 h-24 bg-rose-50 rounded-bl-full -translate-y-4 translate-x-4 transition-transform group-hover:scale-110`}></div>
+                            <div className={`absolute top-0 right-0 w-20 h-20 bg-rose-50 rounded-bl-full -translate-y-4 translate-x-4 transition-transform group-hover:scale-110`}></div>
                             
-                            <div className="relative z-10 flex flex-col h-full space-y-4">
+                            <div className="relative z-10 flex flex-col h-full space-y-3">
                                 <div className="flex justify-between items-start">
-                                    <div className="w-12 h-12 rounded-2xl bg-white border border-rose-100 shadow-lg flex items-center justify-center text-2xl group-hover:rotate-12 transition-transform duration-300">
+                                    <div className="w-10 h-10 rounded-xl bg-white border border-rose-100 shadow-lg flex items-center justify-center text-xl group-hover:rotate-12 transition-transform duration-300">
                                         {getCategoryIcon(expense.category)}
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest">{expense.category}</p>
-                                        <p className="text-[9px] font-bold text-slate-400 mt-1">{new Date(expense.date).toLocaleDateString()}</p>
+                                        <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest">{expense.category}</p>
+                                        <p className="text-[8px] font-bold text-slate-400 mt-1">{new Date(expense.date).toLocaleDateString()}</p>
                                     </div>
                                 </div>
 
-                                <h5 className="font-black text-slate-800 text-base leading-tight uppercase tracking-tight line-clamp-2 min-h-[2.5rem]">
+                                <h5 className="font-black text-slate-800 text-sm leading-tight uppercase tracking-tight line-clamp-2 min-h-[2.25rem]">
                                     {expense.title}
                                 </h5>
 
-                                <div className="bg-slate-50/80 rounded-2xl p-4 border border-white/60 group-hover:bg-white transition-colors duration-500 shadow-inner">
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Voucher Amount</p>
-                                    <p className="text-2xl font-black text-slate-900 tracking-tighter group-hover:text-rose-600 transition-colors">
+                                <div className="bg-slate-50/80 rounded-xl p-3 border border-white/60 group-hover:bg-white transition-colors duration-500 shadow-inner">
+                                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Voucher Amount</p>
+                                    <p className="text-xl font-black text-slate-900 tracking-tighter group-hover:text-rose-600 transition-colors">
                                         {currency}{expense.amount.toLocaleString()}
                                     </p>
                                 </div>

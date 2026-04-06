@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { SchoolProfileData, UserProfileData, Student } from '../types';
+import { SchoolProfileData, UserProfileData, Student, ViewState } from '../types';
+import AnimatedBackground from './AnimatedBackground';
 
 interface LockScreenProps {
   schoolData: SchoolProfileData;
@@ -8,11 +9,13 @@ interface LockScreenProps {
   classes: string[];
   correctPin?: string;
   onUnlock: (role: 'ADMIN' | 'STUDENT', studentId?: string) => void;
-  onAddStudent: (student: Omit<Student, 'id' | 'isDeleted'>) => void;
+  onAddInquiry: (inquiry: { name: string; grade: string; parentName: string; phone: string; dob: string; address: string }) => void;
+  initialTab?: 'ADMIN' | 'STUDENT';
+  onBackToLanding?: () => void;
 }
 
-const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students, classes, correctPin, onUnlock, onAddStudent }) => {
-  const [activeTab, setActiveTab] = useState<'ADMIN' | 'STUDENT'>('ADMIN');
+const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students, classes, correctPin, onUnlock, onAddInquiry, initialTab, onBackToLanding }) => {
+  const [activeTab, setActiveTab] = useState<'ADMIN' | 'STUDENT'>(initialTab || 'ADMIN');
   const [userId, setUserId] = useState(''); // Used for Admin ID
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
@@ -138,10 +141,8 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
     setIsLoading(true);
 
     setTimeout(() => {
-        onAddStudent({
-            ...admissionData,
-            email: '',
-            enrollmentDate: new Date().toISOString().split('T')[0],
+        onAddInquiry({
+            ...admissionData
         });
         setIsLoading(false);
         setAdmissionSuccess(true);
@@ -151,15 +152,24 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-100 flex flex-col items-center justify-center p-4 relative overflow-y-auto overflow-x-hidden font-sans">
+    <div className={`min-h-screen w-full transition-colors duration-700 ${activeTab === 'ADMIN' ? 'bg-slate-100' : 'bg-emerald-50'} flex flex-col items-center justify-center p-4 relative overflow-y-auto overflow-x-hidden font-sans`}>
+        {/* Background Decorations */}
+        <div className={`absolute top-0 left-0 w-full h-1/2 transition-colors duration-700 ${activeTab === 'ADMIN' ? 'bg-indigo-600' : 'bg-emerald-600'} rounded-b-[5rem] shadow-2xl z-0`}></div>
+        <div className={`absolute top-1/4 left-1/4 w-64 h-64 transition-colors duration-700 ${activeTab === 'ADMIN' ? 'bg-indigo-400' : 'bg-emerald-400'} rounded-full blur-[100px] opacity-20 animate-pulse`}></div>
+        <div className={`absolute bottom-1/4 right-1/4 w-96 h-96 transition-colors duration-700 ${activeTab === 'ADMIN' ? 'bg-purple-400' : 'bg-teal-400'} rounded-full blur-[120px] opacity-20 animate-pulse delay-700`}></div>
         
-        {/* Background Decoration */}
-        <div className="absolute top-0 left-0 w-full h-1/2 bg-indigo-600 rounded-b-[3rem] z-0 shadow-2xl"></div>
-        <div className="absolute top-20 right-10 w-64 h-64 bg-white/10 rounded-full blur-3xl z-0"></div>
-        <div className="absolute top-40 left-10 w-48 h-48 bg-purple-500/20 rounded-full blur-3xl z-0"></div>
-
         {/* Main Card */}
         <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden relative z-10 animate-scale-in">
+            {/* Back to Landing Button */}
+            {onBackToLanding && (
+                <button 
+                    onClick={onBackToLanding}
+                    className="absolute top-6 left-6 w-10 h-10 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-100 hover:text-indigo-600 transition-all z-20 shadow-sm border border-slate-100"
+                    title="Back to Landing Page"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+            )}
             
             {/* School Branding Section */}
             <div className="pt-8 pb-4 px-8 text-center flex flex-col items-center">
@@ -180,20 +190,22 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
             </div>
 
             {/* Tabs Selector */}
-            <div className="flex p-1 bg-slate-100 mx-8 mb-6 rounded-2xl border border-slate-200">
-                <button 
-                    onClick={() => setActiveTab('ADMIN')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'ADMIN' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    <span>👑</span> Admin
-                </button>
-                <button 
-                    onClick={() => setActiveTab('STUDENT')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'STUDENT' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    <span>🎓</span> Student
-                </button>
-            </div>
+            {!initialTab && (
+                <div className="flex p-1 bg-slate-100 mx-8 mb-6 rounded-2xl border border-slate-200">
+                    <button 
+                        onClick={() => setActiveTab('ADMIN')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'ADMIN' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <span>👑</span> Admin
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('STUDENT')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'STUDENT' ? 'bg-white text-emerald-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        <span>🎓</span> Student
+                    </button>
+                </div>
+            )}
 
             {/* Login Form */}
             <div className="px-8 pb-8">
@@ -216,7 +228,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                                     </div>
                                     <input 
                                         type="text" required
-                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-${activeTab === 'ADMIN' ? 'indigo' : 'emerald'}-500 focus:bg-white transition-all`}
                                         placeholder="e.g. ADM 01"
                                         value={userId}
                                         onChange={(e) => setUserId(e.target.value)}
@@ -233,7 +245,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                                         </div>
                                         <select 
                                             required
-                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all appearance-none"
+                                            className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-${activeTab === 'ADMIN' ? 'indigo' : 'emerald'}-500 focus:bg-white transition-all appearance-none`}
                                             value={selectedClass}
                                             onChange={(e) => {
                                                 setSelectedClass(e.target.value);
@@ -257,7 +269,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                                         </div>
                                         <select 
                                             required
-                                            className="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all appearance-none"
+                                            className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-${activeTab === 'ADMIN' ? 'indigo' : 'emerald'}-500 focus:bg-white transition-all appearance-none`}
                                             value={selectedStudentId}
                                             onChange={(e) => setSelectedStudentId(e.target.value)}
                                         >
@@ -281,7 +293,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                                     </div>
                                     <input 
                                         type="date" 
-                                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all uppercase"
+                                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-${activeTab === 'ADMIN' ? 'indigo' : 'emerald'}-500 focus:bg-white transition-all uppercase`}
                                         value={dob}
                                         onChange={(e) => setDob(e.target.value)}
                                     />
@@ -302,7 +314,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                                 </div>
                                 <input 
                                     type={showPassword ? "text" : "password"}
-                                    className="w-full pl-10 pr-10 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all"
+                                    className={`w-full pl-10 pr-10 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-${activeTab === 'ADMIN' ? 'indigo' : 'emerald'}-500 focus:bg-white transition-all`}
                                     placeholder="••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
@@ -327,7 +339,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                         <div className="pt-2 flex flex-col gap-3">
                             <button 
                                 type="submit" 
-                                className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black uppercase text-xs tracking-[0.2em] shadow-lg shadow-indigo-100 hover:bg-indigo-700 hover:shadow-indigo-300 transform active:scale-95 transition-all flex items-center justify-center gap-2"
+                                className={`w-full py-4 ${activeTab === 'ADMIN' ? 'bg-indigo-600 shadow-indigo-100 hover:bg-indigo-700 hover:shadow-indigo-300' : 'bg-emerald-600 shadow-emerald-100 hover:bg-emerald-700 hover:shadow-emerald-300'} text-white rounded-xl font-black uppercase text-xs tracking-[0.2em] shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2`}
                             >
                                 {activeTab === 'ADMIN' ? 'Login as Administrator' : 'Access Student Portal'}
                             </button>

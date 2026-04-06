@@ -11,7 +11,10 @@ export enum ViewState {
   RECYCLE_BIN = 'RECYCLE_BIN',
   SCHOOL_PROFILE = 'SCHOOL_PROFILE',
   USER_PROFILE = 'USER_PROFILE',
-  SETTINGS = 'SETTINGS'
+  SETTINGS = 'SETTINGS',
+  LANDING = 'LANDING',
+  LOCK = 'LOCK',
+  NEW_INQUIRY = 'NEW_INQUIRY'
 }
 
 export interface AppNotification {
@@ -37,6 +40,18 @@ export interface Student {
   address?: string;
   totalAgreedFees?: number;
   backLogs?: number;
+}
+
+export interface Inquiry {
+  id: string;
+  studentName: string;
+  grade: string;
+  parentName: string;
+  phone: string;
+  email: string;
+  message: string;
+  date: string;
+  status: 'Pending' | 'Contacted' | 'Enrolled' | 'Closed';
 }
 
 export interface Employee {
@@ -82,6 +97,11 @@ export interface ExpenseRecord {
   session?: string;
 }
 
+export interface AdmissionTimelineItem {
+  label: string;
+  value: string;
+}
+
 export interface SchoolProfileData {
   name: string;
   address: string;
@@ -103,6 +123,27 @@ export interface SchoolProfileData {
   authorizedSignature?: string;
   departments?: string[];
   notice?: string;
+  leadershipList?: LeadershipCard[];
+  admissionTimeline?: AdmissionTimelineItem[];
+  requiredDocuments?: string[];
+  eligibilityCriteria?: string;
+  prospectusUrl?: string;
+  admissionFormUrl?: string;
+  campusAcres?: string;
+  successRate?: string;
+}
+
+export interface LeadershipCard {
+  id: string;
+  name: string;
+  role: string;
+  experience: string;
+  joined: string;
+  degree: string;
+  session: string;
+  specialization: string;
+  office: string;
+  image: string;
 }
 
 export interface UserProfileData {
@@ -116,6 +157,11 @@ export interface UserProfileData {
   photo?: string;
   joiningDate?: string;
   address?: string;
+  experience?: string;
+  degree?: string;
+  session?: string;
+  specialization?: string;
+  office?: string;
 }
 
 export interface SliderImage {
@@ -207,6 +253,7 @@ export interface Note {
 export interface AppData {
   students: Student[];
   employees: Employee[];
+  inquiries: Inquiry[];
   classes: string[];
   feeCategories: string[];
   fees: FeeRecord[];

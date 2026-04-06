@@ -16,6 +16,8 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapsed, onToggle, schoolProfile, settings, userRole = 'ADMIN', onLogout }) => {
   const isAdmin = userRole === 'ADMIN';
   const isStudent = userRole === 'STUDENT';
+  const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
   const menuItems = [
     { id: ViewState.DASHBOARD, label: 'Dashboard', icon: '📊', visible: true },
@@ -43,6 +45,38 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
     // Automatically fully hide the sidebar when an option is selected
     if (!isCollapsed) {
       onToggle();
+    }
+  };
+
+  const handleLogoutClick = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = () => {
+    setIsLoggingOut(true);
+    setTimeout(() => {
+      if (onLogout) onLogout();
+      if (!isCollapsed) onToggle();
+      setIsLoggingOut(false);
+      setShowLogoutConfirm(false);
+    }, 1500);
+  };
+
+  const getLightGradient = (view: ViewState) => {
+    switch(view) {
+      case ViewState.DASHBOARD: return 'bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200/50';
+      case ViewState.STUDENTS: 
+      case ViewState.STUDENT_PROFILE: return 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100/50';
+      case ViewState.EMPLOYEES:
+      case ViewState.EMPLOYEE_PROFILE: return 'bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100/50';
+      case ViewState.FEES: return 'bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100/50';
+      case ViewState.EXPENSES: return 'bg-gradient-to-r from-red-50 to-rose-50 border border-red-100/50';
+      case ViewState.RECYCLE_BIN: return 'bg-gradient-to-r from-gray-50 to-stone-50 border border-gray-200/50';
+      case ViewState.SCHOOL_PROFILE: return 'bg-gradient-to-r from-purple-50 to-fuchsia-50 border border-purple-100/50';
+      case ViewState.PARENT_PROFILE: return 'bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-100/50';
+      case ViewState.USER_PROFILE: return 'bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100/50';
+      case ViewState.SETTINGS: return 'bg-gradient-to-r from-slate-100 to-gray-100 border border-slate-200/50';
+      default: return 'bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200/50';
     }
   };
 
@@ -85,12 +119,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
         title={isCollapsed ? item.label : ''}
         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative ${
           isActive
-            ? `${getActiveGradient(item.id)} text-white`
-            : 'text-slate-500 hover:bg-indigo-50 hover:text-indigo-600'
+            ? `${getActiveGradient(item.id)} text-white scale-[1.02] shadow-xl`
+            : `${getLightGradient(item.id)} text-slate-600 hover:scale-[1.01] hover:shadow-md hover:border-indigo-200`
         }`}
       >
         <span className={`text-2xl transition-transform duration-300 ${!isActive ? 'group-hover:scale-110' : ''}`}>{item.icon}</span>
-        <span className="font-medium whitespace-nowrap overflow-hidden w-auto opacity-100 relative">
+        <span className="font-black whitespace-nowrap overflow-hidden w-auto opacity-100 relative uppercase tracking-tight text-[11px]">
           {item.label}
         </span>
       </button>
@@ -98,12 +132,13 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
   };
 
   return (
-    <aside 
-      className={`${
-        isCollapsed ? 'w-0 border-none' : 'w-64 border-r'
-      } bg-white border-slate-200 flex flex-col h-full shrink-0 z-20 transition-all duration-300 ease-in-out relative overflow-hidden`}
-    >
-      {/* Toggle Button (Only visible when open to close manually) */}
+    <>
+      <aside 
+        className={`${
+          isCollapsed ? 'w-0 border-none' : 'w-64 border-r'
+        } bg-white border-slate-200 flex flex-col h-full shrink-0 z-20 transition-all duration-300 ease-in-out relative overflow-hidden`}
+      >
+        {/* Toggle Button (Only visible when open to close manually) */}
       <button
         onClick={onToggle}
         className={`absolute -right-3 top-6 bg-white border border-slate-200 text-slate-400 p-1.5 rounded-full shadow-sm hover:text-indigo-600 hover:border-indigo-200 transition-colors z-50 focus:outline-none ${isCollapsed ? 'hidden' : 'block'}`}
@@ -186,10 +221,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
         {/* Logout Button */}
         <div className="mt-auto pt-4 pb-2">
             <button
-                onClick={() => {
-                    if (onLogout) onLogout();
-                    if (!isCollapsed) onToggle();
-                }}
+                onClick={handleLogoutClick}
                 title={isCollapsed ? 'Logout' : ''}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-200/50"
             >
@@ -205,6 +237,44 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
           <span>v1.10.0 • React</span>
       </div>
     </aside>
+
+    {/* Logout Confirmation Modal - Moved outside aside for full-page coverage */}
+    {showLogoutConfirm && (
+      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fade-in">
+        <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm text-center shadow-2xl border border-white/20 animate-scale-in relative overflow-hidden">
+          {isLoggingOut ? (
+            <div className="py-10 flex flex-col items-center justify-center gap-6">
+              <div className="w-20 h-20 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+              <div>
+                <h3 className="text-2xl font-black text-slate-800 mb-2">Logging Out...</h3>
+                <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Securing your session</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-xl shadow-red-100/50">🚪</div>
+              <h3 className="text-2xl font-black text-slate-800 mb-3 leading-tight">Confirm Logout</h3>
+              <p className="text-sm text-slate-500 mb-8 font-medium leading-relaxed px-4">Are you sure you want to end your current session?</p>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={confirmLogout}
+                  className="w-full py-4 bg-red-600 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl shadow-red-200 hover:bg-red-700 transition-all active:scale-95"
+                >
+                  Yes, Logout Now
+                </button>
+                <button 
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="w-full py-4 bg-slate-50 text-slate-500 font-black uppercase text-xs tracking-widest rounded-2xl hover:bg-slate-100 transition-all active:scale-95"
+                >
+                  No, Stay Logged In
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

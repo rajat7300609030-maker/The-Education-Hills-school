@@ -298,8 +298,11 @@ const Fees: React.FC<FeesProps> = ({
                           try {
                               await navigator.share(shareDataFile);
                           } catch (err: any) {
-                              if (err.name !== 'AbortError') {
-                                console.log('File sharing failed', err);
+                              if (err.name === 'AbortError') {
+                                console.log('Share canceled by user');
+                              } else {
+                                console.error('File sharing failed', err);
+                                handleQuickSave(); // Fallback to download
                               }
                           }
                       } else {
@@ -308,7 +311,11 @@ const Fees: React.FC<FeesProps> = ({
                             try {
                               await navigator.share(shareDataText);
                             } catch (err: any) {
-                              if (err.name !== 'AbortError') console.log('Text sharing failed', err);
+                              if (err.name === 'AbortError') {
+                                console.log('Share canceled by user');
+                              } else {
+                                console.error('Text sharing failed', err);
+                              }
                             }
                           }
                       }
@@ -319,7 +326,11 @@ const Fees: React.FC<FeesProps> = ({
               try {
                 await navigator.share(shareDataText);
               } catch (err: any) {
-                if (err.name !== 'AbortError') console.log('Link sharing failed', err);
+                if (err.name === 'AbortError') {
+                  console.log('Share canceled by user');
+                } else {
+                  console.log('Link sharing failed', err);
+                }
               }
               setIsSharing(false);
           } else {
@@ -738,7 +749,7 @@ const Fees: React.FC<FeesProps> = ({
                         return (
                             <div 
                                 key={fee.id} onClick={() => setActiveFeeId(isActive ? null : fee.id)}
-                                className={`group relative bg-white rounded-[1.5rem] p-5 border-2 transition-all duration-500 cursor-pointer overflow-hidden ${
+                                className={`group relative bg-white rounded-2xl p-4 border-2 transition-all duration-500 cursor-pointer overflow-hidden ${
                                     isActive 
                                     ? 'border-indigo-600 shadow-2xl scale-[1.05] z-30' 
                                     : 'border-slate-50 shadow-lg hover:border-indigo-100 hover:shadow-2xl hover:-translate-y-1'
@@ -748,39 +759,39 @@ const Fees: React.FC<FeesProps> = ({
                                 <div className={`absolute inset-0 bg-gradient-to-br ${mGradient} opacity-50 transition-opacity duration-500 group-hover:opacity-100`}></div>
 
                                 {/* Floating Background Icon */}
-                                <div className={`absolute -bottom-4 -right-4 opacity-[0.05] text-8xl pointer-events-none group-hover:scale-125 transition-transform duration-1000 rotate-12`}>
+                                <div className={`absolute -bottom-4 -right-4 opacity-[0.05] text-7xl pointer-events-none group-hover:scale-125 transition-transform duration-1000 rotate-12`}>
                                     {getFeeIcon(fee.type)}
                                 </div>
 
                                 {/* Side color bar */}
-                                <div className={`absolute top-0 left-0 w-1.5 h-full bg-${mColor}-500/40 group-hover:bg-${mColor}-500 transition-colors duration-500 shadow-[2px_0_10px_rgba(0,0,0,0.05)]`}></div>
+                                <div className={`absolute top-0 left-0 w-1 h-full bg-${mColor}-500/40 group-hover:bg-${mColor}-500 transition-colors duration-500 shadow-[2px_0_10px_rgba(0,0,0,0.05)]`}></div>
 
-                                <div className="relative pl-2 space-y-4">
+                                <div className="relative pl-2 space-y-3">
                                     <div className="flex justify-between items-start">
                                         <div className="min-w-0 flex-1">
-                                            {/* STUDENT NAME - EXTREMELY PROMINENT */}
-                                            <h5 className="font-black text-slate-900 text-3xl leading-[1] truncate pr-1 group-hover:text-indigo-900 transition-colors tracking-tighter uppercase">
+                                            {/* STUDENT NAME - PROMINENT BUT COMPACT */}
+                                            <h5 className="font-black text-slate-900 text-xl leading-[1] truncate pr-1 group-hover:text-indigo-900 transition-colors tracking-tighter uppercase">
                                                 {student?.name || 'Archived User'}
                                             </h5>
-                                            <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-lg bg-${mColor}-100 text-${mColor}-700 border border-${mColor}-200 uppercase tracking-widest shadow-sm`}>
+                                            <div className="flex flex-wrap items-center gap-1 mt-2">
+                                                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-lg bg-${mColor}-100 text-${mColor}-700 border border-${mColor}-200 uppercase tracking-widest shadow-sm`}>
                                                     {getPaymentMethodIcon(fee.paymentMethod || 'Cash')} {fee.paymentMethod || 'Cash'}
                                                 </span>
-                                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded-lg bg-white/60 backdrop-blur-sm text-slate-400 border border-slate-100 uppercase tracking-widest">
+                                                <span className="text-[7px] font-black px-1.5 py-0.5 rounded-lg bg-white/60 backdrop-blur-sm text-slate-400 border border-slate-100 uppercase tracking-widest">
                                                     {fee.type}
                                                 </span>
                                             </div>
                                         </div>
-                                        <div className="w-10 h-10 rounded-xl bg-white/80 backdrop-blur-md border border-white flex items-center justify-center text-xl shadow-lg shrink-0 group-hover:rotate-12 transition-transform duration-300">
+                                        <div className="w-8 h-8 rounded-lg bg-white/80 backdrop-blur-md border border-white flex items-center justify-center text-lg shadow-lg shrink-0 group-hover:rotate-12 transition-transform duration-300">
                                             {getFeeIcon(fee.type)}
                                         </div>
                                     </div>
 
-                                    <div className="bg-white/40 backdrop-blur-md rounded-2xl p-4 border border-white/60 group-hover:bg-white/80 transition-colors duration-500 shadow-inner">
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Receipt Total</p>
+                                    <div className="bg-white/40 backdrop-blur-md rounded-xl p-3 border border-white/60 group-hover:bg-white/80 transition-colors duration-500 shadow-inner">
+                                        <p className="text-[7px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Receipt Total</p>
                                         <div className="flex items-baseline gap-1">
-                                            <span className={`text-sm font-black text-${mColor}-400`}>{currency}</span>
-                                            <span className="text-3xl font-black text-slate-900 tracking-tighter group-hover:text-indigo-800 transition-colors">
+                                            <span className={`text-xs font-black text-${mColor}-400`}>{currency}</span>
+                                            <span className="text-xl font-black text-slate-900 tracking-tighter group-hover:text-indigo-800 transition-colors">
                                                 {fee.amount.toLocaleString()}
                                             </span>
                                         </div>
@@ -788,12 +799,12 @@ const Fees: React.FC<FeesProps> = ({
 
                                     <div className="flex items-center justify-between pt-1 border-t border-slate-200/40 border-dashed">
                                         <div className="flex flex-col">
-                                            <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Entry Date</span>
-                                            <span className="text-[11px] font-black text-slate-600">
+                                            <span className="text-[7px] font-black text-slate-300 uppercase tracking-widest">Entry Date</span>
+                                            <span className="text-[10px] font-black text-slate-600">
                                                 {new Date(fee.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
                                             </span>
                                         </div>
-                                        <div className={`w-8 h-8 rounded-full bg-${mColor}-50 text-${mColor}-600 flex items-center justify-center text-xs shadow-sm ring-4 ring-${mColor}-50/50 group-hover:animate-bounce`}>
+                                        <div className={`w-7 h-7 rounded-full bg-${mColor}-50 text-${mColor}-600 flex items-center justify-center text-[10px] shadow-sm ring-4 ring-${mColor}-50/50 group-hover:animate-bounce`}>
                                             ✅
                                         </div>
                                     </div>
@@ -801,7 +812,7 @@ const Fees: React.FC<FeesProps> = ({
 
                                 {/* Action Layer - Only for Admins */}
                                 {isActive && (
-                                    <div className="absolute inset-0 bg-white/20 backdrop-blur-3xl rounded-[1.5rem] flex flex-col items-center justify-center gap-5 animate-fade-in z-40 p-4 border border-white/50 shadow-2xl">
+                                    <div className="absolute inset-0 bg-white/20 backdrop-blur-3xl rounded-2xl flex flex-col items-center justify-center gap-4 animate-fade-in z-40 p-4 border border-white/50 shadow-2xl">
                                         <div className="flex items-center gap-3">
                                             {isAdmin && (
                                                 <button 
@@ -812,7 +823,7 @@ const Fees: React.FC<FeesProps> = ({
                                                       setIsPaymentFormOpen(true); 
                                                       window.scrollTo({top: 0, behavior: 'smooth'}); 
                                                     }} 
-                                                    className="w-12 h-12 rounded-2xl bg-amber-500 text-white shadow-2xl flex items-center justify-center text-2xl hover:scale-110 active:scale-95 transition-all border border-amber-400/50" 
+                                                    className="w-10 h-10 rounded-xl bg-amber-500 text-white shadow-2xl flex items-center justify-center text-xl hover:scale-110 active:scale-95 transition-all border border-amber-400/50" 
                                                     title="Edit Entry"
                                                 >
                                                     ✏️
@@ -820,7 +831,7 @@ const Fees: React.FC<FeesProps> = ({
                                             )}
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); handleViewReceipt(fee); }} 
-                                                className="w-14 h-14 rounded-2xl bg-indigo-600 text-white shadow-2xl flex items-center justify-center text-3xl hover:scale-110 active:scale-95 transition-all border-4 border-indigo-400/30" 
+                                                className="w-12 h-12 rounded-xl bg-indigo-600 text-white shadow-2xl flex items-center justify-center text-2xl hover:scale-110 active:scale-95 transition-all border-4 border-indigo-400/30" 
                                                 title="Full Receipt"
                                             >
                                                 🧾
@@ -828,14 +839,14 @@ const Fees: React.FC<FeesProps> = ({
                                             {isAdmin && (
                                                 <button 
                                                     onClick={(e) => { e.stopPropagation(); setFeeToDelete(fee.id); }} 
-                                                    className="w-12 h-12 rounded-2xl bg-rose-600 text-white shadow-2xl flex items-center justify-center text-2xl hover:scale-110 active:scale-95 transition-all border border-rose-400/50" 
+                                                    className="w-10 h-10 rounded-xl bg-rose-600 text-white shadow-2xl flex items-center justify-center text-xl hover:scale-110 active:scale-95 transition-all border border-rose-400/50" 
                                                     title="Void Record"
                                                 >
                                                     🗑️
                                                 </button>
                                             )}
                                         </div>
-                                        <p className="text-[9px] font-black text-indigo-950 uppercase tracking-[0.4em] opacity-60">Entry Control</p>
+                                        <p className="text-[8px] font-black text-indigo-950 uppercase tracking-[0.4em] opacity-60">Entry Control</p>
                                     </div>
                                 )}
                             </div>
@@ -945,10 +956,6 @@ const Fees: React.FC<FeesProps> = ({
                                 </div>
                              )}
                             <div className="flex flex-col items-center">
-                                <div className="w-16 h-16 p-1 bg-white border border-slate-100 rounded-xl mb-3 shadow-sm">
-                                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`ReceiptID:${viewReceiptFee.id}|Student:${receiptStudent.name}|Paid:${viewReceiptFee.amount}`)}`} alt="Verify" className="w-full h-full"/>
-                                </div>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Scan to verify authenticity</p>
                                 <p className="text-[9px] text-slate-300 font-medium mt-4">Generated on {new Date().toLocaleString()}</p>
                             </div>
 

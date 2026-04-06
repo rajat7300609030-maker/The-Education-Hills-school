@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Pin, Trash2, Plus, StickyNote, X } from 'lucide-react';
 import { Note } from '../types';
 

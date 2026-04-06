@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { AppData, AppSettings, FeeRecord, ExpenseRecord, Student, ViewState, SliderImage } from '../types';
+import { AppData, AppSettings, FeeRecord, ExpenseRecord, Student, ViewState } from '../types';
 import AdSenseUnit from './AdSenseUnit';
 import NotesBoard from './NotesBoard';
 import { 
@@ -96,56 +96,6 @@ const FinancialCard = ({ title, rawValue, currency, icon, gradient, delay, subVa
       </div>
   </div>
 );
-
-const ImageSlider = ({ config }: { config: AppSettings['imageSlider'] }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const images = config.images || [];
-
-  useEffect(() => {
-    if (!config.enabled || !config.autoplay || images.length <= 1) return;
-    const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % images.length);
-    }, config.interval || 5000);
-    return () => clearInterval(timer);
-  }, [config.enabled, config.autoplay, config.interval, images.length]);
-
-  if (!config.enabled || images.length === 0) return null;
-
-  const next = () => setCurrentIndex((prev) => (prev + 1) % images.length);
-  const prev = () => setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
-
-  return (
-    <div className="relative w-full h-[300px] md:h-[450px] rounded-[3rem] overflow-hidden shadow-2xl border border-slate-200 group animate-scale-in">
-      <div className="absolute inset-0 flex transition-transform duration-1000 ease-out" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
-        {images.map((img, idx) => (
-          <div key={img.id} className="relative min-w-full h-full">
-            <img src={img.url} className="w-full h-full object-cover" alt={img.title || 'Slide'} />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-            <div className="absolute bottom-10 left-10 right-10 text-white max-w-2xl animate-slide-up">
-              <h3 className="text-3xl md:text-5xl font-black tracking-tighter mb-2">{img.title}</h3>
-              <p className="text-sm md:text-lg font-medium opacity-80 line-clamp-2">{img.description}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {config.showArrows !== false && images.length > 1 && (
-        <>
-          <button onClick={prev} className="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white/20">◀</button>
-          <button onClick={next} className="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-white/20">▶</button>
-        </>
-      )}
-
-      {images.length > 1 && (
-        <div className="absolute bottom-6 right-10 flex gap-2">
-          {images.map((_, idx) => (
-            <button key={idx} onClick={() => setCurrentIndex(idx)} className={`w-3 h-3 rounded-full transition-all ${currentIndex === idx ? 'bg-indigo-500 w-8' : 'bg-white/30 hover:bg-white/50'}`}></button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
 
 const Dashboard: React.FC<DashboardProps> = ({ 
   data, 
@@ -424,46 +374,6 @@ const Dashboard: React.FC<DashboardProps> = ({
       )}
 
       {/* --- 1ST POSITION: SCHOOL PROFILE CARD --- */}
-      <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden relative group transition-all duration-500 animate-scale-in">
-          <div className="h-48 relative overflow-hidden group">
-              {data.schoolProfile?.banner ? (
-                  <img src={data.schoolProfile.banner} alt="Banner" className="w-full h-full object-cover transition-all duration-1000 group-hover:scale-105" />
-              ) : (
-                  <div className="w-full h-full bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 relative">
-                      <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:30px_30px]"></div>
-                  </div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-              <div className="absolute top-6 right-8 z-20">
-                  <div className="bg-white/10 backdrop-blur-xl border border-white/20 px-5 py-2 rounded-2xl flex flex-col items-end">
-                      <span className="text-[8px] font-black text-indigo-300 uppercase tracking-widest">Active Session</span>
-                      <span className="text-sm font-black text-white">{data.schoolProfile?.currentSession}</span>
-                  </div>
-              </div>
-          </div>
-          <div className="px-8 pb-8 text-center relative">
-              <div className="w-28 h-28 mx-auto -mt-14 bg-white rounded-[2rem] p-1.5 shadow-2xl mb-4 relative rotate-3 hover:rotate-0 transition-transform duration-300 z-10 border-4 border-white">
-                  <div className="w-full h-full rounded-[1.5rem] bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden">
-                       <div className="w-full h-full flex items-center justify-center" style={{ transform: `scale(${(data.schoolProfile?.logoSize || 100) / 100})` }}>
-                        {data.schoolProfile?.logo ? <img src={data.schoolProfile.logo} alt="Logo" className="w-full h-full object-contain p-2" /> : <span className="text-5xl">🏫</span>}
-                      </div>
-                  </div>
-              </div>
-              <div className="animate-slide-up space-y-1">
-                  <h2 className="text-3xl font-black text-slate-800 tracking-tighter leading-none">{data.schoolProfile?.name}</h2>
-                  <p className="text-sm font-bold text-indigo-600/80 italic">"{data.schoolProfile?.motto}"</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5 mt-6 bg-slate-50/50 rounded-[2rem] border border-slate-100 backdrop-blur-sm text-left font-black text-slate-800">
-                        <div className="space-y-0.5"><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Address</p><p className="text-xs truncate">{data.schoolProfile?.address}</p></div>
-                        <div className="space-y-0.5"><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Contact</p><p className="text-xs">{data.schoolProfile?.contactNumber}</p></div>
-                        <div className="space-y-0.5"><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Board</p><p className="text-xs">{data.schoolProfile?.board}</p></div>
-                        <div className="space-y-0.5"><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Students</p><p className="text-xs">{activeStudents.length} Enrolled</p></div>
-                  </div>
-              </div>
-          </div>
-      </div>
-
-      {/* --- 2ND POSITION: IMAGE SLIDER --- */}
-      <ImageSlider config={data.settings.imageSlider} />
 
       {isAdmin && (
         <>
@@ -1119,45 +1029,26 @@ const Dashboard: React.FC<DashboardProps> = ({
                         Today: {new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                     </span>
                 </div>
-                <div className="mt-8 h-[500px]">
-                    <NotesBoard 
-                      notes={data.notes || []} 
-                      onAddNote={onAddNote} 
-                      onDeleteNote={onDeleteNote} 
-                      onTogglePinNote={onTogglePinNote} 
-                    />
-                </div>
           </div>
           <div className="lg:col-span-4 flex flex-col gap-8">
-              <div className="bg-white rounded-[3rem] shadow-xl border border-slate-100 overflow-hidden flex flex-col group h-full hover:shadow-2xl transition-all duration-500">
-                  <div className="p-10 bg-slate-900 text-white relative h-40 flex flex-col justify-center overflow-hidden">
-                      <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-                      <div className="absolute -right-10 -top-10 w-40 h-40 bg-indigo-600/20 rounded-full blur-3xl"></div>
-                      <h3 className="text-2xl font-black uppercase tracking-tighter relative z-10 leading-none">Institutional<br/>Portal</h3>
-                      <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-[0.3em] mt-2 relative z-10">Digital ID Verification</p>
-                  </div>
-                  <div className="flex-1 p-10 flex flex-col items-center justify-center bg-slate-50/30">
-                      <div className="bg-white p-6 rounded-[3rem] shadow-2xl border-8 border-slate-100 mb-8 relative hover:scale-110 hover:rotate-2 transition-all duration-700 cursor-pointer group/qr">
-                           <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`${data.schoolProfile.name}|${data.schoolProfile.address}`)}`} alt="School QR" className="w-48 h-48 rounded-2xl" />
-                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/qr:opacity-100 transition-opacity bg-white/10 backdrop-blur-[2px] rounded-[2.5rem]">
-                                <span className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl">Scan to Verify</span>
-                           </div>
-                      </div>
-                      <h4 className="font-black text-slate-800 text-xl uppercase text-center leading-tight tracking-tight">{data.schoolProfile.name}</h4>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase text-center mt-2 tracking-[0.2em]">Official Institutional Profile</p>
-                      
-                      <div className="mt-10 w-full space-y-3">
-                          <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Status</span>
-                              <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100">VERIFIED</span>
-                          </div>
-                          <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
-                              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Type</span>
-                              <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100">ACADEMIC</span>
-                          </div>
-                      </div>
-                  </div>
-              </div>
+                <div className="bg-white rounded-[3rem] shadow-xl border border-slate-100 p-8 h-full">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl">
+                                📌
+                            </div>
+                            <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">Notice Board</h3>
+                        </div>
+                    </div>
+                    <div className="h-[500px]">
+                        <NotesBoard 
+                          notes={data.notes || []} 
+                          onAddNote={onAddNote} 
+                          onDeleteNote={onDeleteNote} 
+                          onTogglePinNote={onTogglePinNote} 
+                        />
+                    </div>
+                </div>
           </div>
       </div>
 

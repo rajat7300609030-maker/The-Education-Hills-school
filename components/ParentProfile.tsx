@@ -1,5 +1,7 @@
-import React, { useMemo } from 'react';
-import { Student, FeeRecord } from '../types';
+import React, { useMemo, useState, useRef } from 'react';
+import html2canvas from 'html2canvas';
+import { motion, AnimatePresence } from 'motion/react';
+import { Student, FeeRecord, SchoolProfileData, AppSettings } from '../types';
 
 interface ParentProfileProps {
   parentName: string;
@@ -8,6 +10,8 @@ interface ParentProfileProps {
   students: Student[];
   fees: FeeRecord[];
   currency: string;
+  schoolProfile: SchoolProfileData;
+  settings: AppSettings;
   onBack: () => void;
   onNavigateToStudent: (studentId: string) => void;
   onNavigateToFees: (studentId?: string) => void;
@@ -21,12 +25,17 @@ const ParentProfile: React.FC<ParentProfileProps> = ({
   students,
   fees,
   currency,
+  schoolProfile,
+  settings,
   onBack,
   onNavigateToStudent,
   onNavigateToFees,
   userRole = 'ADMIN'
 }) => {
   const isAdmin = userRole === 'ADMIN';
+  const [viewFamilyReceipt, setViewFamilyReceipt] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   // Pattern fix constant
   const SVG_TEXTURE = "data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.08' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='1'/%3E%3Ccircle cx='13' cy='13' r='1'/%3E%3C/g%3E%3C/svg%3E";
@@ -70,6 +79,105 @@ const ParentProfile: React.FC<ParentProfileProps> = ({
   }, [myChildren, fees]);
 
   const lastPayment = familyTransactions.length > 0 ? familyTransactions[0] : null;
+
+  const handleDownloadFamilyReceipt = async () => {
+    if (!receiptRef.current) return;
+    try {
+      const canvas = await html2canvas(receiptRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Ensure the cloned element is visible for rendering
+          const el = clonedDoc.querySelector('.receipt-container') as HTMLElement;
+          if (el) el.style.display = 'block';
+        }
+      });
+      const link = document.createElement('a');
+      link.download = `Family_Receipt_${parentName.replace(/\s+/g, '_')}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      console.error('Download error:', err);
+    }
+  };
+
+  const handleShareFamilyReceipt = async () => {
+    if (!receiptRef.current) return;
+    setIsSharing(true);
+    try {
+      const canvas = await html2canvas(receiptRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+      
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'));
+      if (!blob) throw new Error('Blob creation failed');
+
+      const file = new File([blob], `Family_Receipt_${parentName.replace(/\s+/g, '_')}.png`, { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Family Payment Receipt',
+          text: `Payment receipt for ${parentName}'s family.`
+        });
+      } else {
+        const url = canvas.toDataURL('image/png');
+        const win = window.open();
+        if (win) {
+          win.document.write(`<img src="${url}" style="max-width: 100%;" />`);
+        } else {
+          handleDownloadFamilyReceipt();
+        }
+      }
+    } catch (err: any) {
+      // Ignore user cancellation
+      if (err.name === 'AbortError') {
+        console.log('Share canceled by user');
+      } else {
+        console.error('Share error:', err);
+        handleDownloadFamilyReceipt();
+      }
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handlePrintFamilyReceipt = () => {
+    if (!receiptRef.current) return;
+    const content = receiptRef.current.innerHTML;
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Family Payment Receipt</title>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+              @media print {
+                body { padding: 0; margin: 0; }
+                .no-print { display: none; }
+              }
+            </style>
+          </head>
+          <body class="p-10">
+            ${content}
+            <script>
+              window.onload = () => {
+                window.print();
+                window.onafterprint = () => window.close();
+              };
+            </script>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+    }
+  };
 
   const contactInfo = {
       phone: parentPhone || 'N/A',
@@ -143,7 +251,16 @@ const ParentProfile: React.FC<ParentProfileProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="space-y-6">
-              <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden">
+              <button 
+                onClick={() => setViewFamilyReceipt(true)}
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white rounded-[1.5rem] border border-indigo-100 shadow-sm text-indigo-600 font-black text-sm hover:bg-indigo-50 transition-all active:scale-95 group"
+              >
+                  <span className="text-xl group-hover:rotate-12 transition-transform">🧾</span>
+                  Family Payment Receipt
+                  <span className="ml-auto text-indigo-300 group-hover:translate-x-1 transition-transform">→</span>
+              </button>
+
+              <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[2rem] p-6 text-white shadow-xl border border-indigo-200 ring-1 ring-indigo-500/10 relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
                   
                   <h3 className="text-lg font-bold flex items-center gap-2 mb-6 relative z-10">
@@ -223,7 +340,7 @@ const ParentProfile: React.FC<ParentProfileProps> = ({
                       const childProgress = childTotal > 0 ? Math.round((childPaid / childTotal) * 100) : 0;
 
                       return (
-                          <div key={child.id} className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                          <div key={child.id} className="bg-white rounded-2xl p-5 border border-indigo-200 ring-1 ring-indigo-500/10 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
                               <div className={`absolute top-0 left-0 w-1.5 h-full ${childDue <= 0 ? 'bg-emerald-500' : 'bg-indigo-500'}`}></div>
                               
                               <div className="flex items-start gap-4 mb-4 pl-2">
@@ -291,7 +408,7 @@ const ParentProfile: React.FC<ParentProfileProps> = ({
           </div>
       </div>
 
-      <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-6 md:p-8">
+      <div className="bg-white rounded-[2rem] shadow-sm border border-indigo-200 ring-1 ring-indigo-500/10 p-6 md:p-8">
           <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                   <span>🧾</span> Recent Family Transactions
@@ -354,6 +471,207 @@ const ParentProfile: React.FC<ParentProfileProps> = ({
              </table>
           </div>
       </div>
+
+      <AnimatePresence>
+        {viewFamilyReceipt && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white w-full max-w-3xl rounded-[2.5rem] shadow-2xl overflow-hidden my-auto flex flex-col relative"
+              >
+                  <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white/80 sticky top-0 z-20 backdrop-blur-xl">
+                      <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+                              <span className="text-xl">🧾</span>
+                          </div>
+                          <div>
+                              <h3 className="text-lg font-black text-slate-800 leading-tight">Family Payment Receipt</h3>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Official Document</p>
+                          </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                          <button 
+                            onClick={handlePrintFamilyReceipt}
+                            className="p-2.5 rounded-xl bg-slate-50 text-slate-600 hover:bg-slate-100 transition-colors border border-slate-200"
+                            title="Print Receipt"
+                          >
+                            🖨️
+                          </button>
+                          <button 
+                            onClick={handleShareFamilyReceipt}
+                            disabled={isSharing}
+                            className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors disabled:opacity-50 border border-indigo-100"
+                            title="Share Receipt"
+                          >
+                            {isSharing ? '⌛' : '🔗'}
+                          </button>
+                          <button 
+                            onClick={handleDownloadFamilyReceipt}
+                            className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors border border-emerald-100"
+                            title="Download PNG"
+                          >
+                            📥
+                          </button>
+                          <div className="w-px h-6 bg-slate-200 mx-1"></div>
+                          <button 
+                              onClick={() => setViewFamilyReceipt(false)}
+                              className="w-10 h-10 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all hover:rotate-90"
+                          >
+                              ✕
+                          </button>
+                      </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-100/30">
+                      <div ref={receiptRef} className="bg-white p-6 md:p-10 border border-slate-200 shadow-xl rounded-[2rem] relative overflow-hidden receipt-container">
+                          <div className="absolute top-0 left-0 w-full h-2 bg-indigo-600"></div>
+                          
+                          <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-10">
+                              <div className="flex items-center gap-5">
+                                  <div className="w-20 h-20 rounded-2xl bg-slate-50 p-2.5 border border-slate-100 flex items-center justify-center overflow-hidden shadow-sm">
+                                      {schoolProfile.logo ? <img src={schoolProfile.logo} className="w-full h-full object-contain" /> : '🏫'}
+                                  </div>
+                                  <div>
+                                      <h4 className="text-2xl font-black text-slate-800 leading-tight">{schoolProfile.name}</h4>
+                                      <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mt-1.5">{schoolProfile.motto}</p>
+                                      <p className="text-[10px] text-slate-500 mt-1">{schoolProfile.address}</p>
+                                  </div>
+                              </div>
+                              <div className="text-right w-full md:w-auto">
+                                  <div className="inline-block px-4 py-1.5 bg-indigo-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200">
+                                      Official Family Receipt
+                                  </div>
+                                  <p className="text-[10px] font-bold text-slate-400 mt-3 uppercase tracking-tighter">
+                                      {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
+                                  </p>
+                                  <p className="text-[10px] font-bold text-slate-400">{new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                              </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+                              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Parent/Guardian</p>
+                                  <p className="text-lg font-black text-slate-800">{parentName}</p>
+                                  <p className="text-xs font-bold text-slate-500 mt-1 flex items-center gap-1.5">
+                                      <span>📞</span> {parentPhone || 'N/A'}
+                                  </p>
+                              </div>
+                              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Financial Summary</p>
+                                  <div className="flex justify-between items-end">
+                                      <div>
+                                          <p className="text-[10px] font-bold text-emerald-600 uppercase">Total Paid</p>
+                                          <p className="text-xl font-black text-emerald-600">{currency}{familyStats.totalPaid.toLocaleString()}</p>
+                                      </div>
+                                      <div className="text-right">
+                                          <p className="text-[10px] font-bold text-rose-500 uppercase">Total Due</p>
+                                          <p className="text-xl font-black text-rose-500">{currency}{familyStats.totalDue.toLocaleString()}</p>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+
+                          <div className="space-y-8 mb-10">
+                              <div>
+                                  <h5 className="text-xs font-black text-slate-800 uppercase tracking-[0.2em] border-b-2 border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                                      <span>🎓</span> Children Details
+                                  </h5>
+                                  <div className="overflow-x-auto">
+                                      <table className="w-full text-left">
+                                          <thead>
+                                              <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                  <th className="pb-3">Student Name</th>
+                                                  <th className="pb-3">ID</th>
+                                                  <th className="pb-3 text-right">Total</th>
+                                                  <th className="pb-3 text-right">Paid</th>
+                                                  <th className="pb-3 text-right">Due</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-slate-50">
+                                              {myChildren.map(child => {
+                                                  const childTotal = (child.totalAgreedFees || 0) + (child.backLogs || 0);
+                                                  const childPaid = fees.filter(f => f.studentId === child.id && f.status === 'Paid' && !f.isDeleted).reduce((sum, f) => sum + f.amount, 0);
+                                                  const childDue = childTotal - childPaid;
+                                                  return (
+                                                      <tr key={child.id} className="text-xs">
+                                                          <td className="py-3">
+                                                              <div className="font-black text-slate-800">{child.name}</div>
+                                                              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5">Class {child.grade}</div>
+                                                          </td>
+                                                          <td className="py-3 font-mono text-slate-400">{child.id}</td>
+                                                          <td className="py-3 text-right font-bold text-slate-700">{currency}{childTotal.toLocaleString()}</td>
+                                                          <td className="py-3 text-right font-bold text-emerald-600">{currency}{childPaid.toLocaleString()}</td>
+                                                          <td className="py-3 text-right font-black text-rose-500">{currency}{childDue.toLocaleString()}</td>
+                                                      </tr>
+                                                  );
+                                              })}
+                                          </tbody>
+                                      </table>
+                                  </div>
+                              </div>
+
+                              <div>
+                                  <h5 className="text-xs font-black text-slate-800 uppercase tracking-[0.2em] border-b-2 border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                                      <span>🧾</span> Transaction History
+                                  </h5>
+                                  <div className="space-y-3">
+                                      {familyTransactions.map((fee) => {
+                                          const student = students.find(s => s.id === fee.studentId);
+                                          return (
+                                              <div key={fee.id} className="flex justify-between items-center p-3 rounded-xl bg-slate-50/50 border border-slate-100 group hover:bg-white hover:shadow-md transition-all">
+                                                  <div className="flex items-center gap-3">
+                                                      <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-sm shadow-sm">
+                                                          {getFeeIcon(fee.type)}
+                                                      </div>
+                                                      <div>
+                                                          <p className="text-xs font-black text-slate-800">{student?.name || 'Unknown'}</p>
+                                                          <p className="text-[9px] font-bold text-indigo-600/70 uppercase tracking-tighter">Class {student?.grade}</p>
+                                                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                                              {fee.type} • {new Date(fee.date).toLocaleDateString('en-GB')} • {fee.paymentMethod || 'Cash'}
+                                                          </p>
+                                                      </div>
+                                                  </div>
+                                                  <div className="text-right">
+                                                      <p className="text-sm font-black text-emerald-600">+{currency}{fee.amount.toLocaleString()}</p>
+                                                      <p className="text-[9px] font-bold text-slate-300 uppercase">Confirmed</p>
+                                                  </div>
+                                              </div>
+                                          );
+                                      })}
+                                      {familyTransactions.length === 0 && (
+                                          <p className="text-center py-6 text-slate-400 text-xs italic font-medium">No transactions recorded yet.</p>
+                                      )}
+                                  </div>
+                              </div>
+                          </div>
+
+                          <div className="flex flex-col md:flex-row justify-end items-center gap-8 pt-8 border-t-2 border-dashed border-slate-100">
+                              <div className="text-center md:text-right flex-1">
+                                  <div className="mb-4">
+                                      {schoolProfile.authorizedSignature && (
+                                          <img src={schoolProfile.authorizedSignature} alt="Signature" className="h-12 w-auto object-contain ml-auto mb-2 mix-blend-multiply" />
+                                      )}
+                                      <div className="h-px w-40 bg-slate-300 ml-auto mb-1"></div>
+                                      <p className="text-[9px] font-black text-slate-800 uppercase tracking-widest">Authorized Signature</p>
+                                  </div>
+                                  <p className="text-[8px] font-bold text-slate-400 leading-relaxed">
+                                      This is a computer-generated receipt and does not require a physical stamp.<br/>
+                                      For any discrepancies, please contact the school administration.
+                                  </p>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  
+                  <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-center gap-4">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Generated by {schoolProfile.name} Management System</p>
+                  </div>
+              </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
