@@ -76,6 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
       case ViewState.PARENT_PROFILE: return 'bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-100/50';
       case ViewState.USER_PROFILE: return 'bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100/50';
       case ViewState.SETTINGS: return 'bg-gradient-to-r from-slate-100 to-gray-100 border border-slate-200/50';
+      case ViewState.NEW_INQUIRY: return 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100/50';
       default: return 'bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200/50';
     }
   };
@@ -104,6 +105,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
         return 'bg-gradient-to-r from-indigo-900 via-blue-900 to-sky-900 shadow-lg shadow-blue-400/20';
       case ViewState.SETTINGS: 
         return 'bg-gradient-to-r from-slate-800 via-gray-800 to-zinc-800 shadow-lg shadow-slate-400/20';
+      case ViewState.NEW_INQUIRY:
+        return 'bg-gradient-to-r from-blue-900 via-indigo-900 to-violet-900 shadow-lg shadow-indigo-400/20';
       default: 
         return 'bg-gradient-to-r from-slate-900 to-slate-800 shadow-lg shadow-slate-400/20';
     }

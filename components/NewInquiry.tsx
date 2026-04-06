@@ -25,6 +25,7 @@ const NewInquiry: React.FC<NewInquiryProps> = ({ classes, inquiries, onAddInquir
     message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'enroll' | 'delete'; inquiry: Inquiry } | null>(null);
 
   const handleInquirySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -319,7 +320,7 @@ const NewInquiry: React.FC<NewInquiryProps> = ({ classes, inquiries, onAddInquir
                     
                     <div className="flex items-center justify-between gap-2">
                       <button 
-                        onClick={() => onConvertToStudent?.(inquiry)}
+                        onClick={() => setConfirmAction({ type: 'enroll', inquiry })}
                         className="flex-1 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 transition-all flex items-center justify-center gap-1"
                         title="Move to Student Profile"
                       >
@@ -333,7 +334,7 @@ const NewInquiry: React.FC<NewInquiryProps> = ({ classes, inquiries, onAddInquir
                         <span>✏️</span>
                       </button>
                       <button 
-                        onClick={() => onDeleteInquiry?.(inquiry.id)}
+                        onClick={() => setConfirmAction({ type: 'delete', inquiry })}
                         className="p-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all"
                         title="Delete Inquiry"
                       >
@@ -345,6 +346,55 @@ const NewInquiry: React.FC<NewInquiryProps> = ({ classes, inquiries, onAddInquir
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmAction && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-[2.5rem] p-8 w-full max-w-sm text-center shadow-2xl border border-white/20 animate-scale-in relative overflow-hidden">
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center text-4xl mx-auto mb-6 shadow-xl ${
+              confirmAction.type === 'delete' ? 'bg-rose-50 text-rose-500 shadow-rose-100/50' : 'bg-indigo-50 text-indigo-500 shadow-indigo-100/50'
+            }`}>
+              {confirmAction.type === 'delete' ? '🗑️' : '🎓'}
+            </div>
+            
+            <h3 className="text-2xl font-black text-slate-800 mb-3 leading-tight">
+              {confirmAction.type === 'delete' ? 'Delete Inquiry' : 'Enroll Student'}
+            </h3>
+            
+            <p className="text-sm text-slate-500 mb-8 font-medium leading-relaxed px-4">
+              {confirmAction.type === 'delete' 
+                ? `Are you sure you want to permanently delete the inquiry for ${confirmAction.inquiry.studentName}?`
+                : `Do you want to convert ${confirmAction.inquiry.studentName}'s inquiry into a formal student enrollment?`}
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => {
+                  if (confirmAction.type === 'delete') {
+                    onDeleteInquiry?.(confirmAction.inquiry.id);
+                  } else {
+                    onConvertToStudent?.(confirmAction.inquiry);
+                  }
+                  setConfirmAction(null);
+                }}
+                className={`w-full py-4 text-white font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl transition-all active:scale-95 ${
+                  confirmAction.type === 'delete' 
+                    ? 'bg-rose-600 shadow-rose-200 hover:bg-rose-700' 
+                    : 'bg-indigo-600 shadow-indigo-200 hover:bg-indigo-700'
+                }`}
+              >
+                Yes, Proceed
+              </button>
+              <button 
+                onClick={() => setConfirmAction(null)}
+                className="w-full py-4 bg-slate-50 text-slate-500 font-black uppercase text-xs tracking-widest rounded-2xl hover:bg-slate-100 transition-all active:scale-95"
+              >
+                No, Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
