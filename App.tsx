@@ -275,6 +275,12 @@ const App: React.FC = () => {
         const fetchedNotes = (notesResp.data || INITIAL_DATA.notes) as Note[];
         const fetchedInquiries = (inquiriesResp.data || []) as Inquiry[];
 
+        const mergeById = <T extends { id: string }>(local: T[], remote: T[]): T[] => {
+          const remoteIds = new Set(remote.map(r => r.id));
+          const localOnly = local.filter(l => !remoteIds.has(l.id));
+          return [...remote, ...localOnly];
+        };
+
         setData(prev => {
           // Only merge config if it's newer or if we don't have local data
           const supabaseLastSync = configResp?.data?.last_sync_date;
@@ -284,12 +290,12 @@ const App: React.FC = () => {
 
           return {
             ...prev,
-            students: fetchedStudents.length > 0 ? fetchedStudents : prev.students,
-            employees: fetchedEmployees.length > 0 ? fetchedEmployees : prev.employees,
-            fees: fetchedFees.length > 0 ? fetchedFees : prev.fees,
-            expenses: fetchedExpenses.length > 0 ? fetchedExpenses : prev.expenses,
-            notes: fetchedNotes.length > 0 ? fetchedNotes : prev.notes,
-            inquiries: fetchedInquiries.length > 0 ? fetchedInquiries : prev.inquiries,
+            students: fetchedStudents.length > 0 ? mergeById(prev.students, fetchedStudents) : prev.students,
+            employees: fetchedEmployees.length > 0 ? mergeById(prev.employees, fetchedEmployees) : prev.employees,
+            fees: fetchedFees.length > 0 ? mergeById(prev.fees, fetchedFees) : prev.fees,
+            expenses: fetchedExpenses.length > 0 ? mergeById(prev.expenses, fetchedExpenses) : prev.expenses,
+            notes: fetchedNotes.length > 0 ? mergeById(prev.notes, fetchedNotes) : prev.notes,
+            inquiries: fetchedInquiries.length > 0 ? mergeById(prev.inquiries, fetchedInquiries) : prev.inquiries,
             schoolProfile: shouldOverwriteConfig ? {
               ...prev.schoolProfile,
               ...(configResp?.data?.school_profile || {})
@@ -497,8 +503,8 @@ const App: React.FC = () => {
     const { error } = await supabase.from('students').insert(newStudent);
     if (error) {
       setSyncStatus('error');
-      setData(prev => ({ ...prev, students: prev.students.filter(s => s.id !== newId) }));
-      showNotification(`❌ Sync Failed: ${error.message}`, 'error');
+      // Keep in local state even if sync fails
+      showNotification(`❌ Sync Failed: ${error.message}. Data saved locally.`, 'error');
     } else {
       setSyncStatus('synced');
       showNotification(`✅ Registered ${newStudent.name}`, 'success');
@@ -609,8 +615,8 @@ const App: React.FC = () => {
     setData(prev => ({ ...prev, employees: [...(prev.employees || []), newEmployee] }));
     const { error } = await supabase.from('employees').insert(newEmployee);
     if (error) {
-      setData(prev => ({ ...prev, employees: prev.employees.filter(e => e.id !== newId) }));
-      showNotification(`❌ Sync Failed: ${error.message}`, 'error');
+      // Keep in local state
+      showNotification(`❌ Sync Failed: ${error.message}. Data saved locally.`, 'error');
     }
   };
 
@@ -664,8 +670,8 @@ const App: React.FC = () => {
     const { error } = await supabase.from('fees').insert(newFee);
     if (error) {
       setSyncStatus('error');
-      setData(prev => ({ ...prev, fees: prev.fees.filter(f => f.id !== newFee.id) }));
-      showNotification(`🚨 Record Error: ${error.message}`, 'error');
+      // Keep in local state
+      showNotification(`🚨 Record Error: ${error.message}. Saved locally.`, 'error');
     } else {
       setSyncStatus('synced');
       showNotification('✅ Fee payment recorded', 'success');
@@ -707,8 +713,8 @@ const App: React.FC = () => {
     const { error } = await supabase.from('expenses').insert({ ...newExpense, description: newExpense.description || '' });
     
     if (error) {
-      setData(prev => ({ ...prev, expenses: (prev.expenses || []).filter(e => e.id !== newExpense.id) }));
-      showNotification(`❌ Database Sync Failed: ${error.message}`, 'error');
+      // Keep in local state
+      showNotification(`❌ Database Sync Failed: ${error.message}. Saved locally.`, 'error');
     } else {
       showNotification('✅ Expense history permanently saved 🔒', 'success');
     }
@@ -760,8 +766,8 @@ const App: React.FC = () => {
     setData(prev => ({ ...prev, notes: [newNote, ...(prev.notes || [])] }));
     const { error } = await supabase.from('notes').insert(newNote);
     if (error) {
-      setData(prev => ({ ...prev, notes: (prev.notes || []).filter(n => n.id !== newNote.id) }));
-      showNotification(`❌ Note Save Failed: ${error.message}`, 'error');
+      // Keep in local state
+      showNotification(`❌ Note Save Failed: ${error.message}. Saved locally.`, 'error');
     }
   };
 
