@@ -120,6 +120,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
         key={`${item.id}-${item.label}`}
         onClick={() => handleItemClick(item.id)}
         title={isCollapsed ? item.label : ''}
+        data-view-id={item.id}
         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative ${
           isActive
             ? `${getActiveGradient(item.id)} text-white scale-[1.02] shadow-xl`

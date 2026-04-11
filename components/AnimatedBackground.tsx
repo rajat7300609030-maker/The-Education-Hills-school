@@ -40,39 +40,35 @@ const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({ view }) => {
 
   const colors = getColors();
 
-  const getBaseGradient = () => {
+  const getGradientVars = () => {
     switch (view) {
       case ViewState.DASHBOARD:
-        return 'from-blue-100/40 via-white to-indigo-100/40';
+        return { from: 'rgba(59, 130, 246, 0.05)', via: 'transparent', to: 'rgba(99, 102, 241, 0.05)' };
       case ViewState.STUDENTS:
       case ViewState.STUDENT_PROFILE:
-        return 'from-emerald-100/40 via-white to-teal-100/40';
+        return { from: 'rgba(16, 185, 129, 0.05)', via: 'transparent', to: 'rgba(20, 184, 166, 0.05)' };
       case ViewState.EMPLOYEES:
       case ViewState.EMPLOYEE_PROFILE:
-        return 'from-violet-100/40 via-white to-purple-100/40';
+        return { from: 'rgba(167, 139, 250, 0.05)', via: 'transparent', to: 'rgba(192, 38, 211, 0.05)' };
       case ViewState.FEES:
       case ViewState.PARENT_PROFILE:
-        return 'from-amber-100/40 via-white to-orange-100/40';
+        return { from: 'rgba(245, 158, 11, 0.05)', via: 'transparent', to: 'rgba(249, 115, 22, 0.05)' };
       case ViewState.EXPENSES:
-        return 'from-rose-100/40 via-white to-red-100/40';
-      case ViewState.SETTINGS:
-        return 'from-slate-200/40 via-white to-gray-200/40';
-      case ViewState.USER_PROFILE:
-      case ViewState.SCHOOL_PROFILE:
-        return 'from-fuchsia-100/40 via-white to-pink-100/40';
-      case ViewState.RECYCLE_BIN:
-        return 'from-gray-200/40 via-white to-slate-200/40';
-      case ViewState.LANDING:
-        return 'from-indigo-100/40 via-white to-blue-100/40';
-      case ViewState.LOCK:
-        return 'from-slate-200/40 via-white to-indigo-100/40';
+        return { from: 'rgba(244, 63, 94, 0.05)', via: 'transparent', to: 'rgba(239, 68, 68, 0.05)' };
       default:
-        return 'from-blue-100/40 via-white to-indigo-100/40';
+        return { from: 'rgba(59, 130, 246, 0.05)', via: 'transparent', to: 'rgba(99, 102, 241, 0.05)' };
     }
   };
 
+  const vars = getGradientVars();
+
   return (
-    <div className={`fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-gradient-to-br ${getBaseGradient()}`}>
+    <div 
+      className="fixed inset-0 -z-10 overflow-hidden pointer-events-none"
+      style={{ 
+        background: `linear-gradient(to bottom right, ${vars.from}, ${vars.via}, ${vars.to})` 
+      } as any}
+    >
       <AnimatePresence mode="wait">
         <motion.div
           key={view}

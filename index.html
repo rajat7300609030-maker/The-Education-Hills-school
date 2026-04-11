@@ -97,13 +97,17 @@
       }
 
       body.theme-dark {
-        --bg-main: #0f172a;
+        --bg-main: #000000;
         --text-main: #f8fafc;
         --text-muted: #94a3b8;
-        --card-bg: #1e293b;
-        --card-border: #334155;
+        --card-bg: #0a0a0a;
+        --card-border: #1a1a1a;
         --accent: #818cf8;
         --accent-hover: #a5b4fc;
+      }
+
+      body.theme-dark[data-view="DASHBOARD"] {
+        --bg-main: linear-gradient(135deg, #000000 0%, #111111 50%, #000000 100%);
       }
 
       body.theme-vibrant {
@@ -148,9 +152,9 @@
 
       /* Global Overrides */
       body[class*="theme-"] {
-        background-color: var(--bg-main) !important;
+        background: var(--bg-main) !important;
         color: var(--text-main) !important;
-        transition: background-color 0.3s ease, color 0.3s ease;
+        transition: background 0.3s ease, color 0.3s ease;
       }
 
       body[class*="theme-"] .bg-white { background-color: var(--card-bg) !important; }
@@ -194,12 +198,112 @@
       body.theme-dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.5) !important; }
       body.theme-dark .shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5) !important; }
       body.theme-dark .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important; }
-      body.theme-dark input, body.theme-dark select, body.theme-dark textarea {
-        background-color: #1e293b !important;
-        color: #f8fafc !important;
-        border-color: #334155 !important;
+      
+      /* Student Card Dark Gradient Background in Dark Mode */
+      body.theme-dark [data-view="STUDENTS"] .stagger-item.bg-gradient-to-br,
+      body.theme-dark [data-view="STUDENT_PROFILE"] .bg-white:not(.bg-indigo-600):not(.bg-emerald-600):not(.bg-rose-600),
+      body.theme-dark [data-view="FEES"] .bg-white:not(.bg-indigo-600):not(.bg-emerald-600):not(.bg-rose-600) {
+        background-image: linear-gradient(to bottom right, #1a1a1a, #2d2d2d) !important;
+        background-color: transparent !important;
+        color: white !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
       }
-      body.theme-dark .bg-slate-100 { background-color: #334155 !important; }
+      
+      body.theme-dark [data-view="STUDENTS"] .stagger-item.bg-gradient-to-br:hover,
+      body.theme-dark [data-view="STUDENT_PROFILE"] .bg-white:not(.bg-indigo-600):not(.bg-emerald-600):not(.bg-rose-600):hover,
+      body.theme-dark [data-view="FEES"] .bg-white:not(.bg-indigo-600):not(.bg-emerald-600):not(.bg-rose-600):hover {
+        background-image: linear-gradient(to bottom right, #222222, #3d3d3d) !important;
+      }
+      
+      /* Ensure text contrast in grey cards */
+      body.theme-dark [data-view="STUDENTS"] .stagger-item.bg-gradient-to-br p,
+      body.theme-dark [data-view="STUDENTS"] .stagger-item.bg-gradient-to-br span:not(.bg-white),
+      body.theme-dark [data-view="STUDENT_PROFILE"] .bg-white p,
+      body.theme-dark [data-view="STUDENT_PROFILE"] .bg-white span:not(.bg-white),
+      body.theme-dark [data-view="FEES"] .bg-white p,
+      body.theme-dark [data-view="FEES"] .bg-white span:not(.bg-white) {
+        color: rgba(255, 255, 255, 0.9) !important;
+      }
+      
+      body.theme-dark [data-view="STUDENTS"] .stagger-item.bg-gradient-to-br h3,
+      body.theme-dark [data-view="STUDENT_PROFILE"] .bg-white h2,
+      body.theme-dark [data-view="STUDENT_PROFILE"] .bg-white h3,
+      body.theme-dark [data-view="FEES"] .bg-white h2,
+      body.theme-dark [data-view="FEES"] .bg-white h3,
+      body.theme-dark [data-view="FEES"] .bg-white h4 {
+        color: white !important;
+      }
+      
+      /* Fix for Student Profile DetailRow icons in dark mode */
+      body.theme-dark [data-view="STUDENT_PROFILE"] .bg-slate-50,
+      body.theme-dark [data-view="FEES"] .bg-slate-50 {
+        background-color: #444444 !important;
+        border-color: #555555 !important;
+      }
+
+      /* Sidebar Dark Mode Styling */
+      body.theme-dark aside {
+        background-color: #000000 !important;
+        border-color: #1a1a1a !important;
+      }
+      body.theme-dark aside nav button {
+        background-image: none !important;
+        background-color: #000000 !important;
+        border-width: 1.5px !important;
+        color: #e2e8f0 !important;
+      }
+      body.theme-dark aside nav button:hover {
+        background-color: #111111 !important;
+      }
+
+      /* Sidebar Button Border Colors in Dark Mode */
+      body.theme-dark aside nav button[data-view-id="DASHBOARD"] { border-color: #64748b !important; }
+      body.theme-dark aside nav button[data-view-id="STUDENTS"],
+      body.theme-dark aside nav button[data-view-id="STUDENT_PROFILE"],
+      body.theme-dark aside nav button[data-view-id="NEW_INQUIRY"] { border-color: #6366f1 !important; }
+      body.theme-dark aside nav button[data-view-id="EMPLOYEES"],
+      body.theme-dark aside nav button[data-view-id="EMPLOYEE_PROFILE"] { border-color: #f59e0b !important; }
+      body.theme-dark aside nav button[data-view-id="FEES"] { border-color: #10b981 !important; }
+      body.theme-dark aside nav button[data-view-id="EXPENSES"] { border-color: #ef4444 !important; }
+      body.theme-dark aside nav button[data-view-id="RECYCLE_BIN"] { border-color: #94a3b8 !important; }
+      body.theme-dark aside nav button[data-view-id="SCHOOL_PROFILE"] { border-color: #a855f7 !important; }
+      body.theme-dark aside nav button[data-view-id="PARENT_PROFILE"] { border-color: #14b8a6 !important; }
+      body.theme-dark aside nav button[data-view-id="USER_PROFILE"] { border-color: #4f46e5 !important; }
+      body.theme-dark aside nav button[data-view-id="SETTINGS"] { border-color: #475569 !important; }
+
+      /* Active state in dark mode */
+      body.theme-dark aside nav button.scale-\[1\.02\] {
+        background-color: #1a1a1a !important;
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.05) !important;
+      }
+      
+      /* Colorful Card Borders for Dark Mode */
+      body.theme-dark .bg-white {
+        border-width: 1.5px !important;
+        border-style: solid !important;
+        box-shadow: 0 0 15px rgba(0,0,0,0.5) !important;
+      }
+      
+      /* Rotating border colors for variety */
+      body.theme-dark .bg-white:nth-child(6n+1), 
+      body.theme-dark [class*="rounded-"].bg-white:nth-of-type(6n+1) { border-color: #6366f1 !important; } /* Indigo */
+      body.theme-dark .bg-white:nth-child(6n+2),
+      body.theme-dark [class*="rounded-"].bg-white:nth-of-type(6n+2) { border-color: #10b981 !important; } /* Emerald */
+      body.theme-dark .bg-white:nth-child(6n+3),
+      body.theme-dark [class*="rounded-"].bg-white:nth-of-type(6n+3) { border-color: #f43f5e !important; } /* Rose */
+      body.theme-dark .bg-white:nth-child(6n+4),
+      body.theme-dark [class*="rounded-"].bg-white:nth-of-type(6n+4) { border-color: #f59e0b !important; } /* Amber */
+      body.theme-dark .bg-white:nth-child(6n+5),
+      body.theme-dark [class*="rounded-"].bg-white:nth-of-type(6n+5) { border-color: #0ea5e9 !important; } /* Sky */
+      body.theme-dark .bg-white:nth-child(6n+6),
+      body.theme-dark [class*="rounded-"].bg-white:nth-of-type(6n+6) { border-color: #a855f7 !important; } /* Purple */
+
+      body.theme-dark input, body.theme-dark select, body.theme-dark textarea {
+        background-color: #0a0a0a !important;
+        color: #f8fafc !important;
+        border-color: #1a1a1a !important;
+      }
+      body.theme-dark .bg-slate-100 { background-color: #111111 !important; }
       body.theme-dark .text-slate-400 { color: #94a3b8 !important; }
 
       /* Glass Specific Tweaks */
@@ -222,10 +326,107 @@
         background-attachment: fixed;
       }
 
-      /* Ocean Specific Tweaks */
+      /* White Ocean Specific Tweaks */
       body.theme-ocean {
-        background-image: linear-gradient(to bottom right, #f0f9ff, #e0f2fe);
-        background-attachment: fixed;
+        background-color: #ffffff !important;
+        background-image: none !important;
+        color: #000000 !important;
+      }
+      body.theme-ocean .bg-white, 
+      body.theme-ocean .bg-slate-50,
+      body.theme-ocean .bg-slate-100,
+      body.theme-ocean .bg-indigo-50,
+      body.theme-ocean .bg-emerald-50,
+      body.theme-ocean .bg-rose-50,
+      body.theme-ocean .bg-amber-50,
+      body.theme-ocean .bg-blue-50,
+      body.theme-ocean .bg-gradient-to-br,
+      body.theme-ocean .bg-gradient-to-r,
+      body.theme-ocean aside,
+      body.theme-ocean header {
+        background-color: #ffffff !important;
+        background-image: none !important;
+        border-color: #000000 !important;
+      }
+      body.theme-ocean * {
+        color: #000000 !important;
+        border-color: #000000 !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+      }
+      body.theme-ocean button, 
+      body.theme-ocean input, 
+      body.theme-ocean select, 
+      body.theme-ocean textarea {
+        background-color: #ffffff !important;
+        border: 1px solid #000000 !important;
+        color: #000000 !important;
+      }
+      body.theme-ocean .text-indigo-600,
+      body.theme-ocean .text-emerald-600,
+      body.theme-ocean .text-rose-600,
+      body.theme-ocean .text-amber-600,
+      body.theme-ocean .text-slate-400,
+      body.theme-ocean .text-slate-500 {
+        color: #000000 !important;
+      }
+      body.theme-ocean .bg-indigo-600,
+      body.theme-ocean .bg-emerald-600,
+      body.theme-ocean .bg-rose-600,
+      body.theme-ocean .bg-amber-600 {
+        background-color: #000000 !important;
+        color: #ffffff !important;
+      }
+      body.theme-ocean .bg-indigo-600 *,
+      body.theme-ocean .bg-emerald-600 *,
+      body.theme-ocean .bg-rose-600 *,
+      body.theme-ocean .bg-amber-600 * {
+        color: #ffffff !important;
+      }
+      body.theme-ocean .shadow-sm,
+      body.theme-ocean .shadow-md,
+      body.theme-ocean .shadow-lg,
+      body.theme-ocean .shadow-xl,
+      body.theme-ocean .shadow-2xl {
+        box-shadow: none !important;
+      }
+      body.theme-ocean border {
+        border-color: #000000 !important;
+      }
+      body.theme-ocean aside .bg-gradient-to-r,
+      body.theme-ocean aside .bg-slate-50,
+      body.theme-ocean aside .bg-white {
+        background-color: #ffffff !important;
+        background-image: none !important;
+        border: 1px solid #000000 !important;
+      }
+      body.theme-ocean aside button {
+        background-color: #ffffff !important;
+        background-image: none !important;
+        border: 1px solid #000000 !important;
+        color: #000000 !important;
+      }
+      body.theme-ocean aside button:hover {
+        background-color: #f0f0f0 !important;
+      }
+      body.theme-ocean aside button.scale-\[1\.02\] {
+        background-color: #000000 !important;
+        color: #ffffff !important;
+      }
+      body.theme-ocean aside button.scale-\[1\.02\] * {
+        color: #ffffff !important;
+      }
+      body.theme-ocean .stagger-item {
+        background-color: #ffffff !important;
+        background-image: none !important;
+        border: 1px solid #000000 !important;
+      }
+      body.theme-ocean .stagger-item * {
+        color: #000000 !important;
+      }
+      /* Remove all colorful borders from dark mode logic if they leak */
+      body.theme-ocean .bg-white[style*="border-color"] {
+        border-color: #000000 !important;
       }
 
       /* Modern Specific Tweaks */

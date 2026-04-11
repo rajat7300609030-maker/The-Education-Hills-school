@@ -484,7 +484,7 @@ const Settings: React.FC<SettingsProps> = ({
                     <option value="vibrant">🌈 Vibrant</option>
                     <option value="glass">✨ Glassmorphism</option>
                     <option value="modern">🏙️ Modern Slate</option>
-                    <option value="ocean">🌊 Deep Ocean</option>
+                    <option value="ocean">🌊 White Ocean</option>
                 </select>
                 <p className="text-[9px] text-slate-400 mt-3 font-medium italic">Choose a look that fits your institutional style.</p>
             </div>

@@ -193,6 +193,10 @@ const App: React.FC = () => {
   const [dbSyncError, setDbSyncError] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'error'>('synced');
 
+  useEffect(() => {
+    document.body.setAttribute('data-view', currentView);
+  }, [currentView]);
+
   const topBarUser = useMemo(() => {
     if (userRole === 'STUDENT' && currentStudentId) {
       const student = data.students.find(s => s.id === currentStudentId);
