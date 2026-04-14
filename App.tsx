@@ -130,6 +130,32 @@ const INITIAL_DATA: AppData = {
       heroSubtitle: 'Experience a world-class education designed for the 21st-century citizen.',
       primaryColor: '#4F46E5',
       secondaryColor: '#F59E0B'
+    },
+    loadingScreen: {
+      showLogo: true,
+      showSchoolName: true,
+      showMotto: true,
+      showSession: true,
+      showProgressBar: true,
+      showStatusMessages: true,
+      showFooter: true,
+      cardColor: '#ffffff',
+      backgroundColor: '#f8fafc',
+      progressBarColor: '#4F46E5',
+      statusMessageColor: '#94a3b8',
+      mottoColor: '#4285F4',
+      schoolNameColor: '#1e293b',
+      logoSize: 100,
+      cardRoundness: '3xl',
+      animationSpeed: 1,
+      showShimmer: true,
+      showPulse: true,
+      statusMessages: [
+        "Establishing Secure Connection",
+        "Synchronizing Academic Records",
+        "Optimizing System Modules",
+        "Finalizing User Environment"
+      ]
     }
   },
   lastSyncDate: new Date().toISOString()
@@ -173,6 +199,10 @@ const App: React.FC = () => {
             landingPage: {
               ...INITIAL_DATA.settings.landingPage,
               ...(parsed.settings?.landingPage || {})
+            },
+            loadingScreen: {
+              ...INITIAL_DATA.settings.loadingScreen,
+              ...(parsed.settings?.loadingScreen || {})
             }
           }
         };
@@ -1051,12 +1081,25 @@ const App: React.FC = () => {
     }
   };
 
+  const [activeStatusIdx, setActiveStatusIdx] = useState(0);
+
+  useEffect(() => {
+    if (!isInitialized && data.settings.loadingScreen.showStatusMessages) {
+      const interval = setInterval(() => {
+        setActiveStatusIdx(prev => (prev + 1) % data.settings.loadingScreen.statusMessages.length);
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [isInitialized, data.settings.loadingScreen.showStatusMessages, data.settings.loadingScreen.statusMessages.length]);
+
   if (!isInitialized) {
+    const ls = data.settings.loadingScreen;
     return (
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="h-screen w-screen flex flex-col items-center justify-center overflow-hidden relative font-sans bg-slate-50"
+        className="h-screen w-screen flex flex-col items-center justify-center overflow-hidden relative font-sans"
+        style={{ backgroundColor: ls.backgroundColor }}
       >
         {/* Modern Abstract Mesh Background */}
         <div className="absolute inset-0 z-0">
@@ -1124,7 +1167,10 @@ const App: React.FC = () => {
           </div>
 
           {/* Vignette Overlay */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,rgba(248,250,252,0.8)_100%)]" />
+          <div 
+            className="absolute inset-0" 
+            style={{ background: `radial-gradient(circle at 50% 50%, transparent 0%, ${ls.backgroundColor}cc 100%)` }}
+          />
         </div>
         
         <div className="max-w-xl w-full mx-4 relative z-10">
@@ -1132,7 +1178,8 @@ const App: React.FC = () => {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8 }}
-            className="bg-white rounded-[3rem] p-12 md:p-16 flex flex-col items-center shadow-[0_40px_100px_-20px_rgba(0,0,0,0.2)] relative overflow-hidden"
+            className={`p-12 md:p-16 flex flex-col items-center shadow-[0_40px_100px_-20px_rgba(0,0,0,0.2)] relative overflow-hidden rounded-${ls.cardRoundness}`}
+            style={{ backgroundColor: ls.cardColor }}
           >
             {/* Google Photos inspired multi-color top accent */}
             <div className="absolute top-0 left-0 right-0 h-1.5 flex">
@@ -1142,82 +1189,115 @@ const App: React.FC = () => {
               <div className="flex-1 bg-[#34A853]"></div>
             </div>
 
-            {/* Subtle Card Shimmer Effect with Google Colors */}
-            <motion.div 
-              animate={{ x: ['-100%', '200%'] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-50/30 to-transparent -skew-x-12 pointer-events-none"
-            />
+            {/* Subtle Card Shimmer Effect */}
+            {ls.showShimmer && (
+              <motion.div 
+                animate={{ x: ['-100%', '200%'] }}
+                transition={{ duration: 4 / ls.animationSpeed, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-50/30 to-transparent -skew-x-12 pointer-events-none"
+              />
+            )}
 
-            {/* Logo in Center - Clean & Minimal */}
-            <div className="relative mb-12">
-              <div
-                className="w-24 h-24 bg-white rounded-[2rem] p-5 shadow-lg flex items-center justify-center overflow-hidden border border-slate-100 relative z-10"
-              >
-                {data.schoolProfile.logo ? (
-                  <img 
-                    src={data.schoolProfile.logo} 
-                    alt="Logo"
-                    className="w-full h-full object-contain"
-                    referrerPolicy="no-referrer"
+            {/* Logo in Center */}
+            {ls.showLogo && (
+              <div className="relative mb-12">
+                <div
+                  className="bg-white rounded-[2rem] p-5 shadow-lg flex items-center justify-center overflow-hidden border border-slate-100 relative z-10"
+                  style={{ width: ls.logoSize, height: ls.logoSize }}
+                >
+                  {data.schoolProfile.logo ? (
+                    <img 
+                      src={data.schoolProfile.logo} 
+                      alt="Logo"
+                      className="w-full h-full object-contain"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <span style={{ fontSize: ls.logoSize / 2.5 }}>🏫</span>
+                  )}
+                </div>
+                
+                {/* Subtle Pulse Effect */}
+                {ls.showPulse && (
+                  <motion.div 
+                    animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0, 0.4] }}
+                    transition={{ duration: 3 / ls.animationSpeed, repeat: Infinity }}
+                    className="absolute inset-0 rounded-[2rem] bg-[#4285F4]/10 -z-10"
                   />
-                ) : (
-                  <span className="text-4xl">🏫</span>
                 )}
               </div>
-              
-              {/* Subtle Pulse Effect with Google Blue */}
-              <motion.div 
-                animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0, 0.4] }}
-                transition={{ duration: 3, repeat: Infinity }}
-                className="absolute inset-0 rounded-[2rem] bg-[#4285F4]/10 -z-10"
-              />
-            </div>
+            )}
 
             {/* Identity & Status */}
             <div className="text-center space-y-6 w-full">
               <div>
-                <h1 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tighter uppercase mb-2">
-                  {data.schoolProfile.name || 'Education Hills'}
-                </h1>
-                <p className="text-[10px] md:text-xs font-bold text-[#4285F4] uppercase tracking-[0.4em] italic">
-                  "{data.schoolProfile.motto || 'Excellence in Education'}"
-                </p>
+                {ls.showSchoolName && (
+                  <h1 
+                    className="text-3xl md:text-4xl font-black tracking-tighter uppercase mb-2"
+                    style={{ color: ls.schoolNameColor }}
+                  >
+                    {data.schoolProfile.name || 'Education Hills'}
+                  </h1>
+                )}
+                {ls.showMotto && (
+                  <p 
+                    className="text-[10px] md:text-xs font-bold uppercase tracking-[0.4em] italic"
+                    style={{ color: ls.mottoColor }}
+                  >
+                    "{data.schoolProfile.motto || 'Excellence in Education'}"
+                  </p>
+                )}
               </div>
 
               {/* Session Card */}
               <div className="flex flex-col items-center gap-4">
-                <div className="bg-slate-50 border border-slate-200 px-4 py-1.5 rounded-full shadow-sm">
-                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-[#34A853] rounded-full animate-pulse"></span>
-                    Academic Session: {data.schoolProfile.currentSession}
-                  </span>
-                </div>
+                {ls.showSession && (
+                  <div className="bg-slate-50 border border-slate-200 px-4 py-1.5 rounded-full shadow-sm">
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-[#34A853] rounded-full animate-pulse"></span>
+                      Academic Session: {data.schoolProfile.currentSession}
+                    </span>
+                  </div>
+                )}
 
-                {/* Processing Bar - Google Multi-color Gradient */}
-                <div className="w-48 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <motion.div 
-                    animate={{ 
-                      x: ['-100%', '100%'],
-                    }}
-                    transition={{ 
-                      duration: 2.5, 
-                      repeat: Infinity, 
-                      ease: "easeInOut" 
-                    }}
-                    className="h-full w-1/2 bg-gradient-to-r from-[#4285F4] via-[#EA4335] to-[#FBBC05] rounded-full"
-                  />
-                </div>
+                {/* Processing Bar */}
+                {ls.showProgressBar && (
+                  <div className="w-48 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <motion.div 
+                      animate={{ 
+                        x: ['-100%', '100%'],
+                      }}
+                      transition={{ 
+                        duration: 2.5 / ls.animationSpeed, 
+                        repeat: Infinity, 
+                        ease: "easeInOut" 
+                      }}
+                      className="h-full w-1/2 rounded-full"
+                      style={{ backgroundColor: ls.progressBarColor }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Technical Status Messages */}
-              <div className="h-12 flex flex-col items-center justify-center overflow-hidden">
-                <div className="flex flex-col gap-8">
-                  <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">
-                    Initializing System Environment...
-                  </span>
+              {ls.showStatusMessages && (
+                <div className="h-12 flex flex-col items-center justify-center overflow-hidden">
+                  <motion.div 
+                    key={activeStatusIdx}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex flex-col gap-8"
+                  >
+                    <span 
+                      className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] whitespace-nowrap"
+                      style={{ color: ls.statusMessageColor }}
+                    >
+                      {ls.statusMessages[activeStatusIdx]}
+                    </span>
+                  </motion.div>
                 </div>
-              </div>
+              )}
 
               {/* Minimal Info */}
               <div className="pt-6 border-t border-slate-100 flex justify-center items-center text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">
@@ -1228,11 +1308,13 @@ const App: React.FC = () => {
         </div>
 
         {/* Professional Footer */}
-        <div className="absolute bottom-12 w-full text-center z-10">
-          <p className="text-[10px] font-black text-indigo-200 uppercase tracking-[0.8em]">
-            Enterprise Grade Security • Encrypted Session
-          </p>
-        </div>
+        {ls.showFooter && (
+          <div className="absolute bottom-12 w-full text-center z-10">
+            <p className="text-[10px] font-black text-indigo-200 uppercase tracking-[0.8em]">
+              Enterprise Grade Security • Encrypted Session
+            </p>
+          </div>
+        )}
       </motion.div>
     );
   }

@@ -27,7 +27,7 @@ const Settings: React.FC<SettingsProps> = ({
     onManualSync,
     session = '2024-25'
 }) => {
-  const [activeTab, setActiveTab] = useState<'general' | 'security' | 'notifications' | 'fees' | 'slider' | 'social' | 'data' | 'sync' | 'loading'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'security' | 'notifications' | 'fees' | 'slider' | 'social' | 'data' | 'sync' | 'landing' | 'loading_screen'>('general');
   const [newSlide, setNewSlide] = useState({ url: '', title: '', description: '' });
   const [isChangingPin, setIsChangingPin] = useState(false);
   const [pinData, setPinData] = useState({ current: '', new: '', confirm: '' });
@@ -97,6 +97,16 @@ const Settings: React.FC<SettingsProps> = ({
       ...settings,
       landingPage: {
         ...settings.landingPage,
+        [key]: value
+      }
+    });
+  };
+
+  const handleLoadingScreenChange = (key: keyof AppSettings['loadingScreen'], value: any) => {
+    onUpdateSettings({
+      ...settings,
+      loadingScreen: {
+        ...settings.loadingScreen,
         [key]: value
       }
     });
@@ -1215,7 +1225,7 @@ const Settings: React.FC<SettingsProps> = ({
     );
   };
 
-  const renderLoading = () => {
+  const renderLandingPage = () => {
     const sections = [
       { id: 'showHero', label: 'Hero Section', icon: '✨' },
       { id: 'showProfile', label: 'School Profile', icon: '🏫' },
@@ -1239,7 +1249,7 @@ const Settings: React.FC<SettingsProps> = ({
           <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
-              <h3 className="text-2xl font-black mb-1">Loading Page Settings</h3>
+              <h3 className="text-2xl font-black mb-1">Landing Page Settings</h3>
               <p className="text-indigo-100 text-xs font-medium">Customize your public-facing landing page.</p>
             </div>
             <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-2xl backdrop-blur-md border border-white/10">
@@ -1428,6 +1438,239 @@ const Settings: React.FC<SettingsProps> = ({
     );
   };
 
+  const renderLoadingScreen = () => {
+    const ls = settings.loadingScreen;
+    const toggles = [
+      { id: 'showLogo', label: 'Show Logo', icon: '🏫' },
+      { id: 'showSchoolName', label: 'Show School Name', icon: '📝' },
+      { id: 'showMotto', label: 'Show Motto', icon: '✨' },
+      { id: 'showSession', label: 'Show Session Card', icon: '📅' },
+      { id: 'showProgressBar', label: 'Show Progress Bar', icon: '⏳' },
+      { id: 'showStatusMessages', label: 'Show Status Messages', icon: '💬' },
+      { id: 'showFooter', label: 'Show Footer', icon: '🏁' },
+      { id: 'showShimmer', label: 'Card Shimmer Effect', icon: '✨' },
+      { id: 'showPulse', label: 'Logo Pulse Effect', icon: '💓' },
+    ];
+
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-3xl p-6 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <h3 className="text-2xl font-black mb-1">Loading Screen Editor</h3>
+              <p className="text-slate-400 text-xs font-medium">Customize the initial loading screen of your application.</p>
+            </div>
+            <button 
+              onClick={() => {
+                if (window.confirm('Reset loading screen to default?')) {
+                  onUpdateSettings({
+                    ...settings,
+                    loadingScreen: {
+                      showLogo: true,
+                      showSchoolName: true,
+                      showMotto: true,
+                      showSession: true,
+                      showProgressBar: true,
+                      showStatusMessages: true,
+                      showFooter: true,
+                      cardColor: '#ffffff',
+                      backgroundColor: '#f8fafc',
+                      progressBarColor: '#4F46E5',
+                      statusMessageColor: '#94a3b8',
+                      mottoColor: '#4285F4',
+                      schoolNameColor: '#1e293b',
+                      logoSize: 100,
+                      cardRoundness: '3xl',
+                      animationSpeed: 1,
+                      showShimmer: true,
+                      showPulse: true,
+                      statusMessages: [
+                        "Establishing Secure Connection",
+                        "Synchronizing Academic Records",
+                        "Optimizing System Modules",
+                        "Finalizing User Environment"
+                      ]
+                    }
+                  });
+                }
+              }}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-[10px] font-black uppercase tracking-widest rounded-xl border border-white/10 transition-all flex items-center gap-2"
+            >
+              <span>🔄</span> Reset to Default
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6">
+            <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+              <span>🎨</span> Colors & Style
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Card Color</label>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="color"
+                    className="w-10 h-10 rounded-lg cursor-pointer border-none"
+                    value={ls.cardColor}
+                    onChange={(e) => handleLoadingScreenChange('cardColor', e.target.value)}
+                  />
+                  <input 
+                    type="text"
+                    className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                    value={ls.cardColor}
+                    onChange={(e) => handleLoadingScreenChange('cardColor', e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Background</label>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="color"
+                    className="w-10 h-10 rounded-lg cursor-pointer border-none"
+                    value={ls.backgroundColor}
+                    onChange={(e) => handleLoadingScreenChange('backgroundColor', e.target.value)}
+                  />
+                  <input 
+                    type="text"
+                    className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                    value={ls.backgroundColor}
+                    onChange={(e) => handleLoadingScreenChange('backgroundColor', e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Progress Bar</label>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="color"
+                    className="w-10 h-10 rounded-lg cursor-pointer border-none"
+                    value={ls.progressBarColor}
+                    onChange={(e) => handleLoadingScreenChange('progressBarColor', e.target.value)}
+                  />
+                  <input 
+                    type="text"
+                    className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                    value={ls.progressBarColor}
+                    onChange={(e) => handleLoadingScreenChange('progressBarColor', e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">School Name</label>
+                <div className="flex items-center gap-2">
+                  <input 
+                    type="color"
+                    className="w-10 h-10 rounded-lg cursor-pointer border-none"
+                    value={ls.schoolNameColor}
+                    onChange={(e) => handleLoadingScreenChange('schoolNameColor', e.target.value)}
+                  />
+                  <input 
+                    type="text"
+                    className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold"
+                    value={ls.schoolNameColor}
+                    onChange={(e) => handleLoadingScreenChange('schoolNameColor', e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-slate-50">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Logo Size ({ls.logoSize}px)</label>
+                <input 
+                  type="range" min="40" max="200" step="10"
+                  className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                  value={ls.logoSize}
+                  onChange={(e) => handleLoadingScreenChange('logoSize', parseInt(e.target.value))}
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Card Roundness</label>
+                <select 
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none"
+                  value={ls.cardRoundness}
+                  onChange={(e) => handleLoadingScreenChange('cardRoundness', e.target.value)}
+                >
+                  <option value="none">None</option>
+                  <option value="sm">Small</option>
+                  <option value="md">Medium</option>
+                  <option value="lg">Large</option>
+                  <option value="xl">Extra Large</option>
+                  <option value="2xl">2XL</option>
+                  <option value="3xl">3XL</option>
+                  <option value="full">Full Circle</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6">
+            <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+              <span>🧩</span> Element Visibility
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {toggles.map((toggle) => (
+                <div key={toggle.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{toggle.icon}</span>
+                    <span className="text-[11px] font-bold text-slate-600">{toggle.label}</span>
+                  </div>
+                  <button 
+                    onClick={() => handleLoadingScreenChange(toggle.id as any, !ls[toggle.id as keyof typeof ls])}
+                    className={`w-10 h-5 rounded-full relative transition-all duration-300 ${ls[toggle.id as keyof typeof ls] ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                  >
+                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${ls[toggle.id as keyof typeof ls] ? 'left-5.5' : 'left-0.5'}`}></div>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+          <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2">
+            <span>💬</span> Status Messages
+          </h4>
+          <div className="space-y-3">
+            {ls.statusMessages.map((msg, idx) => (
+              <div key={idx} className="flex gap-2">
+                <input 
+                  type="text"
+                  className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={msg}
+                  onChange={(e) => {
+                    const newMsgs = [...ls.statusMessages];
+                    newMsgs[idx] = e.target.value;
+                    handleLoadingScreenChange('statusMessages', newMsgs);
+                  }}
+                />
+                <button 
+                  onClick={() => {
+                    const newMsgs = ls.statusMessages.filter((_, i) => i !== idx);
+                    handleLoadingScreenChange('statusMessages', newMsgs);
+                  }}
+                  className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <button 
+              onClick={() => handleLoadingScreenChange('statusMessages', [...ls.statusMessages, 'New Status Message...'])}
+              className="w-full py-3 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest border border-dashed border-indigo-200 hover:bg-indigo-100 transition-all"
+            >
+              + Add Status Message
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderSync = () => {
     const syncDetails = [
         { label: 'Students', count: data.students.length, status: 'Active' },
@@ -1560,7 +1803,8 @@ const Settings: React.FC<SettingsProps> = ({
     { id: 'fees', label: 'Fees & Rules', icon: '🏷️' },
     { id: 'slider', label: 'Gallery', icon: '🖼️' },
     { id: 'social', label: 'Social Media', icon: '📱' },
-    { id: 'loading', label: 'Loading Page', icon: '🚀' },
+    { id: 'landing', label: 'Landing Page', icon: '🚀' },
+    { id: 'loading_screen', label: 'Loading Screen', icon: '⏳' },
     { id: 'data', label: 'System Data', icon: '💾' },
     { id: 'sync', label: 'Cloud Sync', icon: '☁️' },
   ];
@@ -1616,7 +1860,8 @@ const Settings: React.FC<SettingsProps> = ({
               {activeTab === 'fees' && renderFees()}
               {activeTab === 'slider' && renderSlider()}
               {activeTab === 'social' && renderSocial()}
-              {activeTab === 'loading' && renderLoading()}
+              {activeTab === 'landing' && renderLandingPage()}
+              {activeTab === 'loading_screen' && renderLoadingScreen()}
               {activeTab === 'data' && renderData()}
               {activeTab === 'sync' && renderSync()}
           </div>

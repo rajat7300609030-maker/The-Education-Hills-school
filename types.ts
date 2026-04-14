@@ -251,6 +251,27 @@ export interface AppSettings {
     }[];
   };
   landingPage: LandingPageSettings;
+  loadingScreen: {
+    showLogo: boolean;
+    showSchoolName: boolean;
+    showMotto: boolean;
+    showSession: boolean;
+    showProgressBar: boolean;
+    showStatusMessages: boolean;
+    showFooter: boolean;
+    cardColor: string;
+    backgroundColor: string;
+    progressBarColor: string;
+    statusMessageColor: string;
+    mottoColor: string;
+    schoolNameColor: string;
+    logoSize: number;
+    cardRoundness: 'none' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | 'full';
+    animationSpeed: number;
+    showShimmer: boolean;
+    showPulse: boolean;
+    statusMessages: string[];
+  };
 }
 
 export interface Note {
