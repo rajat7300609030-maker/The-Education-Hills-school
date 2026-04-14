@@ -185,8 +185,15 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                 
                 <h1 className="text-xl font-black text-slate-800 leading-tight mb-1">{schoolData?.name || "School Manager"}</h1>
                 {schoolData?.motto && (
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">"{schoolData.motto}"</p>
+                    <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-2 italic">"{schoolData.motto}"</p>
                 )}
+                <div className="flex flex-col items-center gap-1 mb-4">
+                    <div className="mt-1">
+                        <span className="bg-slate-100 text-slate-500 px-3 py-0.5 rounded-full text-[8px] font-black tracking-widest uppercase border border-slate-200">
+                            Session: {schoolData?.currentSession}
+                        </span>
+                    </div>
+                </div>
             </div>
 
             {/* Tabs Selector */}

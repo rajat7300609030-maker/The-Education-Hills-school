@@ -2,6 +2,10 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Note, LandingPageSettings, ViewState, UserProfileData } from '../types';
 import AnimatedBackground from './AnimatedBackground';
+import GooglePhotos from './GooglePhotos';
+import YouTubePortal from './YouTubePortal';
+import FacebookPortal from './FacebookPortal';
+import InstagramPortal from './InstagramPortal';
 import { 
   GraduationCap, 
   Users, 
@@ -69,6 +73,7 @@ interface LandingPageProps {
   imageSlider?: import('../types').AppSettings['imageSlider'];
   students?: import('../types').Student[];
   employees?: import('../types').Employee[];
+  onNavigateToGooglePhotos?: () => void;
 }
 
 const ALL_HOLIDAYS = [
@@ -113,7 +118,7 @@ const ALL_HOLIDAYS = [
   { date: '2026-12-25', title: 'Christmas Day', type: 'Holiday', color: 'red' },
 ];
 
-const LandingPage: React.FC<LandingPageProps> = ({ onLogin, notes, schoolProfile, socialMedia, landingPageSettings, userProfile, imageSlider, students, employees }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onLogin, notes, schoolProfile, socialMedia, landingPageSettings, userProfile, imageSlider, students, employees, onNavigateToGooglePhotos }) => {
   const [currentFacilityIndex, setCurrentFacilityIndex] = React.useState(0);
   const [selectedGalleryImage, setSelectedGalleryImage] = React.useState<null | { url: string; title: string }>(null);
 
@@ -333,7 +338,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, notes, schoolProfile
               <button 
                 onClick={() => onLogin('STUDENT')}
                 className="w-full py-5 text-white font-black rounded-[2rem] text-xs uppercase tracking-widest hover:scale-[1.02] transition-all shadow-xl flex items-center justify-center gap-3"
-                style={{ backgroundImage: `linear-gradient(to right, ${secondaryColor}, ${secondaryColor})`, shadowColor: `${secondaryColor}20` }}
+                style={{ backgroundImage: `linear-gradient(to right, #0f172a, #1e293b)`, boxShadow: `0 10px 25px -5px rgba(15, 23, 42, 0.3)` }}
               >
                 Enroll Now ✨
               </button>
@@ -1155,6 +1160,213 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, notes, schoolProfile
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Social Media & Media Sections */}
+      <section className="py-24 bg-white px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Google Photos Card */}
+            {landingPageSettings?.showGooglePhotos && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="bg-white p-2 rounded-[3.5rem] shadow-2xl shadow-indigo-100 border border-slate-100 flex flex-col items-center text-center group overflow-hidden relative"
+              >
+                {/* Premium Border Gradient */}
+                <div className="absolute inset-0 rounded-[3.5rem] border-2 border-transparent bg-gradient-to-br from-indigo-500/20 via-transparent to-blue-500/20 pointer-events-none"></div>
+
+                <div className="p-6 w-full flex flex-col items-center">
+                  <div className="w-16 h-16 bg-indigo-600 text-white rounded-[1.5rem] flex items-center justify-center text-3xl mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all shadow-lg shadow-indigo-200">🖼️</div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Google Photos</h3>
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-indigo-50 rounded-full border border-indigo-100">
+                      <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></div>
+                      <span className="text-[8px] font-black text-indigo-600 uppercase tracking-widest">Live Preview</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-500 font-medium mb-8">Interactive window to our campus memories.</p>
+                  
+                  {/* Scrollable Content Area */}
+                  <div className="w-full h-96 bg-slate-50/50 rounded-[2.5rem] mb-8 overflow-hidden border border-slate-100 relative shadow-inner">
+                    <div className="absolute inset-0 overflow-y-auto custom-scrollbar">
+                        <GooglePhotos 
+                          isMini={true} 
+                          settings={{ 
+                            landingPage: landingPageSettings,
+                            theme: 'light',
+                            fontSize: 14,
+                            language: 'en',
+                            enableNotifications: true,
+                            enableAutoBackup: false,
+                            currency: 'INR',
+                            notificationLimit: 10,
+                            security: { pin: '1234', enableLock: false },
+                            notificationStyle: 'Standard',
+                            socialMedia: {},
+                            imageSlider: imageSlider || { images: [], autoPlay: true, interval: 5000 }
+                          } as any} 
+                        />
+                    </div>
+                    {/* Scroll Indicator Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-slate-50/80 to-transparent pointer-events-none flex items-end justify-center pb-2">
+                      <div className="w-1 h-4 bg-slate-300 rounded-full animate-bounce"></div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 w-full px-4 pb-4">
+                    <button 
+                      onClick={() => landingPageSettings.googlePhotosLink && window.open(landingPageSettings.googlePhotosLink, '_blank')}
+                      className="w-full py-5 bg-indigo-600 text-white font-black rounded-2xl text-xs uppercase tracking-widest hover:bg-indigo-700 hover:-translate-y-1 transition-all shadow-xl shadow-indigo-200 flex items-center justify-center gap-3 group/btn"
+                    >
+                      <span className="group-hover/btn:rotate-12 transition-transform">🚀</span> Open Google Photos
+                    </button>
+                    
+                    <button 
+                      onClick={onNavigateToGooglePhotos}
+                      className="w-full py-5 bg-white text-slate-600 border border-slate-200 font-black rounded-2xl text-xs uppercase tracking-widest hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-3"
+                    >
+                      <span>🖼️</span> View Full Portal
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* YouTube Card */}
+            {landingPageSettings?.showYouTube && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="bg-white p-2 rounded-[3.5rem] shadow-2xl shadow-red-100 border border-slate-100 flex flex-col items-center text-center group overflow-hidden relative"
+              >
+                <div className="absolute inset-0 rounded-[3.5rem] border-2 border-transparent bg-gradient-to-br from-red-500/20 via-transparent to-red-600/20 pointer-events-none"></div>
+                <div className="p-6 w-full flex flex-col items-center">
+                  <div className="w-16 h-16 bg-red-600 text-white rounded-[1.5rem] flex items-center justify-center text-3xl mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all shadow-lg shadow-red-200">🎥</div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-2xl font-black text-slate-800 tracking-tight uppercase">YouTube</h3>
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-red-50 rounded-full border border-red-100">
+                      <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
+                      <span className="text-[8px] font-black text-red-600 uppercase tracking-widest">Live Preview</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-500 font-medium mb-8">Watch our latest campus highlights.</p>
+                  
+                  <div className="w-full h-96 bg-slate-50/50 rounded-[2.5rem] mb-8 overflow-hidden border border-slate-100 relative shadow-inner">
+                    <div className="absolute inset-0 overflow-y-auto custom-scrollbar">
+                        <YouTubePortal 
+                          isMini={true} 
+                          settings={{ landingPage: landingPageSettings } as any} 
+                        />
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-slate-50/80 to-transparent pointer-events-none flex items-end justify-center pb-2">
+                      <div className="w-1 h-4 bg-slate-300 rounded-full animate-bounce"></div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 w-full px-4 pb-4">
+                    <button 
+                      onClick={() => landingPageSettings.youtubeLink && window.open(landingPageSettings.youtubeLink, '_blank')}
+                      className="w-full py-5 bg-red-600 text-white font-black rounded-2xl text-xs uppercase tracking-widest hover:bg-red-700 hover:-translate-y-1 transition-all shadow-xl shadow-red-200 flex items-center justify-center gap-3 group/btn"
+                    >
+                      <span className="group-hover/btn:rotate-12 transition-transform">🚀</span> Open Channel
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Facebook Card */}
+            {landingPageSettings?.showFacebook && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="bg-white p-2 rounded-[3.5rem] shadow-2xl shadow-blue-100 border border-slate-100 flex flex-col items-center text-center group overflow-hidden relative"
+              >
+                <div className="absolute inset-0 rounded-[3.5rem] border-2 border-transparent bg-gradient-to-br from-blue-500/20 via-transparent to-blue-600/20 pointer-events-none"></div>
+                <div className="p-6 w-full flex flex-col items-center">
+                  <div className="w-16 h-16 bg-[#1877f2] text-white rounded-[1.5rem] flex items-center justify-center text-3xl mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all shadow-lg shadow-blue-200">📘</div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Facebook</h3>
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 rounded-full border border-blue-100">
+                      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+                      <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest">Live Preview</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-500 font-medium mb-8">Follow our daily community updates.</p>
+                  
+                  <div className="w-full h-96 bg-slate-50/50 rounded-[2.5rem] mb-8 overflow-hidden border border-slate-100 relative shadow-inner">
+                    <div className="absolute inset-0 overflow-y-auto custom-scrollbar">
+                        <FacebookPortal 
+                          isMini={true} 
+                          settings={{ landingPage: landingPageSettings } as any} 
+                        />
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-slate-50/80 to-transparent pointer-events-none flex items-end justify-center pb-2">
+                      <div className="w-1 h-4 bg-slate-300 rounded-full animate-bounce"></div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 w-full px-4 pb-4">
+                    <button 
+                      onClick={() => landingPageSettings.facebookLink && window.open(landingPageSettings.facebookLink, '_blank')}
+                      className="w-full py-5 bg-[#1877f2] text-white font-black rounded-2xl text-xs uppercase tracking-widest hover:bg-[#145dbf] hover:-translate-y-1 transition-all shadow-xl shadow-blue-200 flex items-center justify-center gap-3 group/btn"
+                    >
+                      <span className="group-hover/btn:rotate-12 transition-transform">🚀</span> Open Page
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Instagram Card */}
+            {landingPageSettings?.showInstagram && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="bg-white p-2 rounded-[3.5rem] shadow-2xl shadow-pink-100 border border-slate-100 flex flex-col items-center text-center group overflow-hidden relative"
+              >
+                <div className="absolute inset-0 rounded-[3.5rem] border-2 border-transparent bg-gradient-to-br from-pink-500/20 via-transparent to-purple-500/20 pointer-events-none"></div>
+                <div className="p-6 w-full flex flex-col items-center">
+                  <div className="w-16 h-16 bg-gradient-to-tr from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] text-white rounded-[1.5rem] flex items-center justify-center text-3xl mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all shadow-lg shadow-pink-200">📸</div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-2xl font-black text-slate-800 tracking-tight uppercase">Instagram</h3>
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-pink-50 rounded-full border border-pink-100">
+                      <div className="w-1.5 h-1.5 bg-pink-500 rounded-full animate-pulse"></div>
+                      <span className="text-[8px] font-black text-pink-600 uppercase tracking-widest">Live Preview</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-500 font-medium mb-8">See snapshots of our campus life.</p>
+                  
+                  <div className="w-full h-96 bg-slate-50/50 rounded-[2.5rem] mb-8 overflow-hidden border border-slate-100 relative shadow-inner">
+                    <div className="absolute inset-0 overflow-y-auto custom-scrollbar">
+                        <InstagramPortal 
+                          isMini={true} 
+                          settings={{ landingPage: landingPageSettings } as any} 
+                        />
+                    </div>
+                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-slate-50/80 to-transparent pointer-events-none flex items-end justify-center pb-2">
+                      <div className="w-1 h-4 bg-slate-300 rounded-full animate-bounce"></div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 w-full px-4 pb-4">
+                    <button 
+                      onClick={() => landingPageSettings.instagramLink && window.open(landingPageSettings.instagramLink, '_blank')}
+                      className="w-full py-5 bg-gradient-to-r from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] text-white font-black rounded-2xl text-xs uppercase tracking-widest hover:opacity-90 hover:-translate-y-1 transition-all shadow-xl shadow-pink-200 flex items-center justify-center gap-3 group/btn"
+                    >
+                      <span className="group-hover/btn:rotate-12 transition-transform">🚀</span> Open Feed
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </div>
         </div>
       </section>

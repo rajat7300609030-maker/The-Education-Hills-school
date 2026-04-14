@@ -1227,6 +1227,10 @@ const Settings: React.FC<SettingsProps> = ({
       { id: 'showEcosystem', label: 'Learning Ecosystem', icon: '🌐' },
       { id: 'showStats', label: 'School Stats', icon: '📊' },
       { id: 'showFooter', label: 'Footer Section', icon: '🏁' },
+      { id: 'showGooglePhotos', label: 'Google Photos', icon: '🖼️', linkId: 'googlePhotosLink', placeholder: 'Google Photos Album Link' },
+      { id: 'showYouTube', label: 'YouTube Videos', icon: '🎥', linkId: 'youtubeLink', placeholder: 'YouTube Channel or Video Link' },
+      { id: 'showFacebook', label: 'Facebook Feed', icon: '📘', linkId: 'facebookLink', placeholder: 'Facebook Page Link' },
+      { id: 'showInstagram', label: 'Instagram Feed', icon: '📸', linkId: 'instagramLink', placeholder: 'Instagram Profile Link' },
     ];
 
     return (
@@ -1312,6 +1316,9 @@ const Settings: React.FC<SettingsProps> = ({
             <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
               <span>🎨</span> Visual Theme
             </h4>
+            <p className="text-[10px] font-bold text-indigo-600 bg-indigo-50 p-2 rounded-lg">
+              ✨ Colors are automatically synced with your school logo.
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Primary Color</label>
@@ -1362,17 +1369,57 @@ const Settings: React.FC<SettingsProps> = ({
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {sections.map((section) => (
-              <div key={section.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">{section.icon}</span>
-                  <span className="text-xs font-bold text-slate-700">{section.label}</span>
+              <div key={section.id} className="flex flex-col p-4 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-colors gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{section.icon}</span>
+                    <span className="text-xs font-bold text-slate-700">{section.label}</span>
+                  </div>
+                  <button 
+                    onClick={() => handleLandingPageChange(section.id as any, !(settings.landingPage?.[section.id as keyof LandingPageSettings]))}
+                    className={`w-10 h-5 rounded-full relative transition-all duration-300 ${settings.landingPage?.[section.id as keyof LandingPageSettings] ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                  >
+                    <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${settings.landingPage?.[section.id as keyof LandingPageSettings] ? 'left-5.5' : 'left-0.5'}`}></div>
+                  </button>
                 </div>
-                <button 
-                  onClick={() => handleLandingPageChange(section.id as any, !(settings.landingPage?.[section.id as keyof LandingPageSettings]))}
-                  className={`w-10 h-5 rounded-full relative transition-all duration-300 ${settings.landingPage?.[section.id as keyof LandingPageSettings] ? 'bg-indigo-600' : 'bg-slate-300'}`}
-                >
-                  <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${settings.landingPage?.[section.id as keyof LandingPageSettings] ? 'left-5.5' : 'left-0.5'}`}></div>
-                </button>
+                
+                {section.linkId && settings.landingPage?.[section.id as keyof LandingPageSettings] && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Link URL</label>
+                    <input 
+                      type="text"
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg text-[11px] font-medium text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={(settings.landingPage as any)?.[section.linkId] || ''}
+                      onChange={(e) => handleLandingPageChange(section.linkId as any, e.target.value)}
+                      placeholder={section.placeholder}
+                    />
+                  </div>
+                )}
+
+                {section.id === 'showGooglePhotos' && settings.landingPage?.showGooglePhotos && settings.landingPage?.googlePhotosLink && (
+                  <div className="grid grid-cols-2 gap-2 mt-2 animate-in fade-in zoom-in duration-300">
+                    <div>
+                      <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Likes Count</label>
+                      <input 
+                        type="text"
+                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-blue-600 outline-none focus:ring-1 focus:ring-blue-500"
+                        value={settings.landingPage?.googlePhotosLikes || ''}
+                        onChange={(e) => handleLandingPageChange('googlePhotosLikes', e.target.value)}
+                        placeholder="e.g. 1.2k"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Photos Count</label>
+                      <input 
+                        type="text"
+                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 outline-none focus:ring-1 focus:ring-slate-500"
+                        value={settings.landingPage?.googlePhotosCount || ''}
+                        onChange={(e) => handleLandingPageChange('googlePhotosCount', e.target.value)}
+                        placeholder="e.g. 450+"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

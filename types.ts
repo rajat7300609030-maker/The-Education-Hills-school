@@ -14,7 +14,8 @@ export enum ViewState {
   SETTINGS = 'SETTINGS',
   LANDING = 'LANDING',
   LOCK = 'LOCK',
-  NEW_INQUIRY = 'NEW_INQUIRY'
+  NEW_INQUIRY = 'NEW_INQUIRY',
+  GOOGLE_PHOTOS = 'GOOGLE_PHOTOS'
 }
 
 export interface AppNotification {
@@ -183,6 +184,16 @@ export interface LandingPageSettings {
   showEcosystem: boolean;
   showStats: boolean;
   showFooter: boolean;
+  showGooglePhotos?: boolean;
+  showYouTube?: boolean;
+  showFacebook?: boolean;
+  showInstagram?: boolean;
+  googlePhotosLink?: string;
+  googlePhotosLikes?: string;
+  googlePhotosCount?: string;
+  youtubeLink?: string;
+  facebookLink?: string;
+  instagramLink?: string;
   heroTitle?: string;
   heroSubtitle?: string;
   primaryColor?: string;

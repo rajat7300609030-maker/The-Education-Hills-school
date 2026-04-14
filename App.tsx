@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'motion/react';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import Dashboard from './components/Dashboard';
@@ -16,9 +17,13 @@ import NotificationToast from './components/NotificationToast';
 import LockScreen from './components/LockScreen';
 import LandingPage from './components/LandingPage';
 import NewInquiry from './components/NewInquiry';
+import GooglePhotos from './components/GooglePhotos';
 import AnimatedBackground from './components/AnimatedBackground';
 import { ViewState, AppData, Student, Employee, Inquiry, FeeRecord, ExpenseRecord, AppSettings, UserProfileData, AppNotification, Note } from './types';
 import { supabase } from './lib/supabase';
+import { Facebook, Twitter, Instagram, Youtube, Linkedin, Mail, Globe } from 'lucide-react';
+import * as VibrantModule from 'node-vibrant/browser';
+const { Vibrant } = (VibrantModule as any).default || VibrantModule;
 
 const INITIAL_DATA: AppData = {
   students: [],
@@ -182,6 +187,7 @@ const App: React.FC = () => {
   const [notificationHistory, setNotificationHistory] = useState<AppNotification[]>([]);
   const [isLocked, setIsLocked] = useState(true);
   const [showLanding, setShowLanding] = useState(true);
+  const [showPublicGallery, setShowPublicGallery] = useState(false);
   const [loginTab, setLoginTab] = useState<'ADMIN' | 'STUDENT' | undefined>(undefined);
   const [userRole, setUserRole] = useState<'ADMIN' | 'STUDENT'>('ADMIN');
   const [currentStudentId, setCurrentStudentId] = useState<string | undefined>(undefined);
@@ -196,6 +202,45 @@ const App: React.FC = () => {
   useEffect(() => {
     document.body.setAttribute('data-view', currentView);
   }, [currentView]);
+
+  // Auto-update landing page colors based on school logo
+  useEffect(() => {
+    const logo = data.schoolProfile.logo;
+    if (!logo || !isInitialized) return;
+
+    const extractColors = async () => {
+      try {
+        // Use Vibrant to extract colors from the logo
+        const palette = await Vibrant.from(logo).getPalette();
+        
+        const primary = palette.Vibrant?.hex || palette.Muted?.hex || '#4F46E5';
+        const secondary = palette.LightVibrant?.hex || palette.DarkVibrant?.hex || '#F59E0B';
+
+        // Only update if colors are different to avoid unnecessary syncs
+        if (data.settings.landingPage.primaryColor !== primary || 
+            data.settings.landingPage.secondaryColor !== secondary) {
+          
+          setData(prev => ({
+            ...prev,
+            settings: {
+              ...prev.settings,
+              landingPage: {
+                ...prev.settings.landingPage,
+                primaryColor: primary,
+                secondaryColor: secondary
+              }
+            }
+          }));
+          
+          showNotification("🎨 Landing page colors synced with logo", "info");
+        }
+      } catch (err) {
+        console.warn("Could not extract colors from logo (CORS or invalid URL):", err);
+      }
+    };
+
+    extractColors();
+  }, [data.schoolProfile.logo, isInitialized, data.settings.landingPage.primaryColor, data.settings.landingPage.secondaryColor]);
 
   const topBarUser = useMemo(() => {
     if (userRole === 'STUDENT' && currentStudentId) {
@@ -986,6 +1031,8 @@ const App: React.FC = () => {
             session={data.schoolProfile.currentSession}
           />
         );
+      case ViewState.GOOGLE_PHOTOS:
+        return <GooglePhotos settings={data.settings} />;
       case ViewState.NEW_INQUIRY:
         return (
           <NewInquiry 
@@ -1004,8 +1051,218 @@ const App: React.FC = () => {
     }
   };
 
+  if (!isInitialized) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="h-screen w-screen flex flex-col items-center justify-center overflow-hidden relative font-sans bg-slate-50"
+      >
+        {/* Modern Abstract Mesh Background */}
+        <div className="absolute inset-0 z-0">
+          {/* Animated Mesh Gradient */}
+          <motion.div 
+            animate={{ 
+              background: [
+                "radial-gradient(circle at 20% 20%, #e0e7ff 0%, transparent 50%)",
+                "radial-gradient(circle at 80% 80%, #e0e7ff 0%, transparent 50%)",
+                "radial-gradient(circle at 20% 80%, #e0e7ff 0%, transparent 50%)",
+                "radial-gradient(circle at 80% 20%, #e0e7ff 0%, transparent 50%)",
+                "radial-gradient(circle at 20% 20%, #e0e7ff 0%, transparent 50%)"
+              ]
+            }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="absolute inset-0 opacity-40"
+          />
+
+          {/* Floating Geometric Outlines */}
+          {[...Array(5)].map((_, i) => (
+            <motion.div
+              key={i}
+              animate={{ 
+                rotate: 360,
+                x: [0, 100, -100, 0],
+                y: [0, -50, 50, 0],
+              }}
+              transition={{ 
+                duration: 20 + i * 5, 
+                repeat: Infinity, 
+                ease: "linear" 
+              }}
+              className="absolute border border-indigo-200/30 rounded-3xl pointer-events-none"
+              style={{ 
+                width: 200 + i * 100, 
+                height: 200 + i * 100, 
+                top: `${20 + i * 10}%`, 
+                left: `${10 + i * 15}%`,
+                opacity: 0.1 + i * 0.05
+              }}
+            />
+          ))}
+
+          {/* Subtle Particle Field */}
+          <div className="absolute inset-0 opacity-20">
+            {[...Array(20)].map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{ 
+                  y: [-20, 20, -20],
+                  opacity: [0.2, 0.5, 0.2]
+                }}
+                transition={{ 
+                  duration: 3 + i % 4, 
+                  repeat: Infinity, 
+                  delay: i * 0.2 
+                }}
+                className="absolute w-1 h-1 bg-indigo-400 rounded-full"
+                style={{ 
+                  top: `${Math.random() * 100}%`, 
+                  left: `${Math.random() * 100}%` 
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Vignette Overlay */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,transparent_0%,rgba(248,250,252,0.8)_100%)]" />
+        </div>
+        
+        <div className="max-w-xl w-full mx-4 relative z-10">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8 }}
+            className="bg-white rounded-[3rem] p-12 md:p-16 flex flex-col items-center shadow-[0_40px_100px_-20px_rgba(0,0,0,0.2)] relative overflow-hidden"
+          >
+            {/* Google Photos inspired multi-color top accent */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 flex">
+              <div className="flex-1 bg-[#4285F4]"></div>
+              <div className="flex-1 bg-[#EA4335]"></div>
+              <div className="flex-1 bg-[#FBBC05]"></div>
+              <div className="flex-1 bg-[#34A853]"></div>
+            </div>
+
+            {/* Subtle Card Shimmer Effect with Google Colors */}
+            <motion.div 
+              animate={{ x: ['-100%', '200%'] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-indigo-50/30 to-transparent -skew-x-12 pointer-events-none"
+            />
+
+            {/* Logo in Center - Clean & Minimal */}
+            <div className="relative mb-12">
+              <div
+                className="w-24 h-24 bg-white rounded-[2rem] p-5 shadow-lg flex items-center justify-center overflow-hidden border border-slate-100 relative z-10"
+              >
+                {data.schoolProfile.logo ? (
+                  <img 
+                    src={data.schoolProfile.logo} 
+                    alt="Logo"
+                    className="w-full h-full object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span className="text-4xl">🏫</span>
+                )}
+              </div>
+              
+              {/* Subtle Pulse Effect with Google Blue */}
+              <motion.div 
+                animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0, 0.4] }}
+                transition={{ duration: 3, repeat: Infinity }}
+                className="absolute inset-0 rounded-[2rem] bg-[#4285F4]/10 -z-10"
+              />
+            </div>
+
+            {/* Identity & Status */}
+            <div className="text-center space-y-6 w-full">
+              <div>
+                <h1 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tighter uppercase mb-2">
+                  {data.schoolProfile.name || 'Education Hills'}
+                </h1>
+                <p className="text-[10px] md:text-xs font-bold text-[#4285F4] uppercase tracking-[0.4em] italic">
+                  "{data.schoolProfile.motto || 'Excellence in Education'}"
+                </p>
+              </div>
+
+              {/* Session Card */}
+              <div className="flex flex-col items-center gap-4">
+                <div className="bg-slate-50 border border-slate-200 px-4 py-1.5 rounded-full shadow-sm">
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-[#34A853] rounded-full animate-pulse"></span>
+                    Academic Session: {data.schoolProfile.currentSession}
+                  </span>
+                </div>
+
+                {/* Processing Bar - Google Multi-color Gradient */}
+                <div className="w-48 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <motion.div 
+                    animate={{ 
+                      x: ['-100%', '100%'],
+                    }}
+                    transition={{ 
+                      duration: 2.5, 
+                      repeat: Infinity, 
+                      ease: "easeInOut" 
+                    }}
+                    className="h-full w-1/2 bg-gradient-to-r from-[#4285F4] via-[#EA4335] to-[#FBBC05] rounded-full"
+                  />
+                </div>
+              </div>
+
+              {/* Technical Status Messages */}
+              <div className="h-12 flex flex-col items-center justify-center overflow-hidden">
+                <div className="flex flex-col gap-8">
+                  <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">
+                    Initializing System Environment...
+                  </span>
+                </div>
+              </div>
+
+              {/* Minimal Info */}
+              <div className="pt-6 border-t border-slate-100 flex justify-center items-center text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">
+                <span>System v5.0.2 • Encrypted Link</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Professional Footer */}
+        <div className="absolute bottom-12 w-full text-center z-10">
+          <p className="text-[10px] font-black text-indigo-200 uppercase tracking-[0.8em]">
+            Enterprise Grade Security • Encrypted Session
+          </p>
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (showPublicGallery) {
+      return (
+        <div className="h-screen flex flex-col">
+          <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+            <button 
+              onClick={() => setShowPublicGallery(false)}
+              className="flex items-center gap-2 text-slate-600 font-bold hover:text-indigo-600 transition-colors"
+            >
+              <span>←</span> Back to Home
+            </button>
+            <button 
+              onClick={() => { setShowPublicGallery(false); setShowLanding(false); }}
+              className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-100"
+            >
+              Login to Portal
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <GooglePhotos settings={data.settings} />
+          </div>
+        </div>
+      );
+  }
+
   if (showLanding && isLocked) {
-      return <LandingPage onLogin={(role) => { setLoginTab(role); setShowLanding(false); }} notes={data.notes} schoolProfile={data.schoolProfile as any} socialMedia={data.settings.socialMedia} landingPageSettings={data.settings.landingPage} userProfile={data.userProfile} imageSlider={data.settings.imageSlider} students={data.students} employees={data.employees} />;
+      return <LandingPage onLogin={(role) => { setLoginTab(role); setShowLanding(false); }} notes={data.notes} schoolProfile={data.schoolProfile as any} socialMedia={data.settings.socialMedia} landingPageSettings={data.settings.landingPage} userProfile={data.userProfile} imageSlider={data.settings.imageSlider} students={data.students} employees={data.employees} onNavigateToGooglePhotos={() => setShowPublicGallery(true)} />;
   }
 
   if (isLocked) {
