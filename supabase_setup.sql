@@ -87,18 +87,30 @@ CREATE TABLE IF NOT EXISTS notes (
     "createdAt" TEXT
 );
 
--- 7. Enable Row Level Security (RLS)
+-- 7. Create Attendance Table
+CREATE TABLE IF NOT EXISTS attendance (
+    id TEXT PRIMARY KEY,
+    "studentId" TEXT,
+    date TEXT NOT NULL,
+    status TEXT NOT NULL,
+    remarks TEXT,
+    session TEXT
+);
+
+-- 8. Enable Row Level Security (RLS)
 ALTER TABLE students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
 
--- 8. Create Policies (Allow all for now - Harden these later)
+-- 9. Create Policies (Allow all for now - Harden these later)
 CREATE POLICY "Allow all access to students" ON students FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all access to employees" ON employees FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all access to fees" ON fees FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all access to expenses" ON expenses FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all access to config" ON config FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all access to notes" ON notes FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all access to attendance" ON attendance FOR ALL USING (true) WITH CHECK (true);

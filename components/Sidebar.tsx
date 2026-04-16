@@ -27,6 +27,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
     
     // Admin only views
     { id: ViewState.STUDENTS, label: 'Students', icon: '🎓', visible: isAdmin },
+    { id: ViewState.ATTENDANCE, label: 'Attendance', icon: '📅', visible: isAdmin },
     { id: ViewState.EMPLOYEES, label: 'Employees', icon: '👔', visible: isAdmin },
     { id: ViewState.FEES, label: 'Fees Manager', icon: '💰', visible: isAdmin },
     { id: ViewState.EXPENSES, label: 'Expenses', icon: '💸', visible: isAdmin },
@@ -77,6 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
       case ViewState.USER_PROFILE: return 'bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100/50';
       case ViewState.SETTINGS: return 'bg-gradient-to-r from-slate-100 to-gray-100 border border-slate-200/50';
       case ViewState.NEW_INQUIRY: return 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100/50';
+      case ViewState.ATTENDANCE: return 'bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100/50';
       default: return 'bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200/50';
     }
   };
@@ -107,6 +109,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isCollapse
         return 'bg-gradient-to-r from-slate-800 via-gray-800 to-zinc-800 shadow-lg shadow-slate-400/20';
       case ViewState.NEW_INQUIRY:
         return 'bg-gradient-to-r from-blue-900 via-indigo-900 to-violet-900 shadow-lg shadow-indigo-400/20';
+      case ViewState.ATTENDANCE:
+        return 'bg-gradient-to-r from-indigo-900 via-purple-900 to-fuchsia-900 shadow-lg shadow-indigo-400/20';
       default: 
         return 'bg-gradient-to-r from-slate-900 to-slate-800 shadow-lg shadow-slate-400/20';
     }

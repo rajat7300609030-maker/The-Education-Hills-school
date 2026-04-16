@@ -19,6 +19,7 @@ interface StudentsProps {
   onViewProfile: (studentId: string) => void;
   onViewParent: (student: Student) => void;
   onNavigateToInquiry: () => void;
+  onNavigateToAttendance: () => void;
   initialEditingId?: string | null;
   onClearEditingId?: () => void;
   syncStatus?: 'synced' | 'syncing' | 'error';
@@ -43,6 +44,7 @@ const Students: React.FC<StudentsProps> = ({
     onViewProfile,
     onViewParent,
     onNavigateToInquiry,
+    onNavigateToAttendance,
     initialEditingId,
     onClearEditingId,
     syncStatus = 'synced',
@@ -328,6 +330,12 @@ const Students: React.FC<StudentsProps> = ({
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap text-sm w-fit"
             >
                 <span>📝</span> <span>New Inquiry</span>
+            </button>
+            <button 
+                onClick={onNavigateToAttendance}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold shadow-md shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2 whitespace-nowrap text-sm w-fit"
+            >
+                <span>📅</span> <span>Attendance</span>
             </button>
         </div>
       </header>

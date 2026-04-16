@@ -15,7 +15,8 @@ export enum ViewState {
   LANDING = 'LANDING',
   LOCK = 'LOCK',
   NEW_INQUIRY = 'NEW_INQUIRY',
-  GOOGLE_PHOTOS = 'GOOGLE_PHOTOS'
+  GOOGLE_PHOTOS = 'GOOGLE_PHOTOS',
+  ATTENDANCE = 'ATTENDANCE'
 }
 
 export interface AppNotification {
@@ -270,6 +271,7 @@ export interface AppSettings {
     animationSpeed: number;
     showShimmer: boolean;
     showPulse: boolean;
+    useGradientProgress: boolean;
     statusMessages: string[];
   };
 }
@@ -282,6 +284,15 @@ export interface Note {
   isPinned?: boolean;
 }
 
+export interface AttendanceRecord {
+  id: string;
+  studentId: string;
+  date: string;
+  status: 'Present' | 'Absent' | 'Late' | 'Leave';
+  remarks?: string;
+  session?: string;
+}
+
 export interface AppData {
   students: Student[];
   employees: Employee[];
@@ -291,6 +302,7 @@ export interface AppData {
   fees: FeeRecord[];
   expenses: ExpenseRecord[];
   notes: Note[];
+  attendance: AttendanceRecord[];
   schoolProfile: SchoolProfileData;
   userProfile: UserProfileData;
   settings: AppSettings;

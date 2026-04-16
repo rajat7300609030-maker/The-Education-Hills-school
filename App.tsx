@@ -17,9 +17,10 @@ import NotificationToast from './components/NotificationToast';
 import LockScreen from './components/LockScreen';
 import LandingPage from './components/LandingPage';
 import NewInquiry from './components/NewInquiry';
+import Attendance from './components/Attendance';
 import GooglePhotos from './components/GooglePhotos';
 import AnimatedBackground from './components/AnimatedBackground';
-import { ViewState, AppData, Student, Employee, Inquiry, FeeRecord, ExpenseRecord, AppSettings, UserProfileData, AppNotification, Note } from './types';
+import { ViewState, AppData, Student, Employee, Inquiry, FeeRecord, ExpenseRecord, AppSettings, UserProfileData, AppNotification, Note, AttendanceRecord } from './types';
 import { supabase } from './lib/supabase';
 import { Facebook, Twitter, Instagram, Youtube, Linkedin, Mail, Globe } from 'lucide-react';
 import * as VibrantModule from 'node-vibrant/browser';
@@ -34,6 +35,7 @@ const INITIAL_DATA: AppData = {
   fees: [],
   expenses: [],
   notes: [],
+  attendance: [],
   schoolProfile: {
     name: 'Education Hills',
     address: 'Mountain View Campus, City Center',
@@ -150,11 +152,13 @@ const INITIAL_DATA: AppData = {
       animationSpeed: 1,
       showShimmer: true,
       showPulse: true,
+      useGradientProgress: true,
       statusMessages: [
-        "Establishing Secure Connection",
-        "Synchronizing Academic Records",
-        "Optimizing System Modules",
-        "Finalizing User Environment"
+        "Connecting to {{school}}",
+        "Syncing {{session}} Records",
+        "{{motto}}",
+        "Optimizing Campus Modules",
+        "Finalizing Academic Environment"
       ]
     }
   },
@@ -316,6 +320,7 @@ const App: React.FC = () => {
         const expensesResp = await supabase.from('expenses').select('*');
         const notesResp = await supabase.from('notes').select('*').order('createdAt', { ascending: false });
         const inquiriesResp = await supabase.from('inquiries').select('*').order('date', { ascending: false });
+        const attendanceResp = await supabase.from('attendance').select('*').order('date', { ascending: false });
         
         let configResp = null;
         try {
@@ -353,6 +358,7 @@ const App: React.FC = () => {
         const fetchedExpenses = (expensesResp.data || INITIAL_DATA.expenses) as ExpenseRecord[];
         const fetchedNotes = (notesResp.data || INITIAL_DATA.notes) as Note[];
         const fetchedInquiries = (inquiriesResp.data || []) as Inquiry[];
+        const fetchedAttendance = (attendanceResp.data || INITIAL_DATA.attendance) as AttendanceRecord[];
 
         const mergeById = <T extends { id: string }>(local: T[], remote: T[]): T[] => {
           const remoteIds = new Set(remote.map(r => r.id));
@@ -375,6 +381,7 @@ const App: React.FC = () => {
             expenses: fetchedExpenses.length > 0 ? mergeById(prev.expenses, fetchedExpenses) : prev.expenses,
             notes: fetchedNotes.length > 0 ? mergeById(prev.notes, fetchedNotes) : prev.notes,
             inquiries: fetchedInquiries.length > 0 ? mergeById(prev.inquiries, fetchedInquiries) : prev.inquiries,
+            attendance: fetchedAttendance.length > 0 ? mergeById(prev.attendance, fetchedAttendance) : prev.attendance,
             schoolProfile: shouldOverwriteConfig ? {
               ...prev.schoolProfile,
               ...(configResp?.data?.school_profile || {})
@@ -823,6 +830,36 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSaveAttendance = async (records: AttendanceRecord[]) => {
+    setSyncStatus('syncing');
+    const updatedAttendance = [...data.attendance];
+    
+    records.forEach(newRecord => {
+      const index = updatedAttendance.findIndex(r => r.studentId === newRecord.studentId && r.date === newRecord.date);
+      if (index > -1) {
+        updatedAttendance[index] = newRecord;
+      } else {
+        updatedAttendance.push(newRecord);
+      }
+    });
+
+    setData(prev => ({ ...prev, attendance: updatedAttendance }));
+    
+    const { error } = await supabase.from('attendance').upsert(records);
+    if (error) {
+      if (error.message.includes('relation "attendance" does not exist')) {
+          setSyncStatus('synced');
+          showNotification('✅ Attendance saved locally (Table not found on server)', 'info');
+      } else {
+          setSyncStatus('error');
+          showNotification(`❌ Attendance Save Failed: ${error.message}`, 'error');
+      }
+    } else {
+      setSyncStatus('synced');
+      showNotification('✅ Attendance recorded successfully', 'success');
+    }
+  };
+
   const handleSoftDeleteStudent = async (id: string) => {
     const now = new Date().toISOString();
     setData(prev => ({ ...prev, students: prev.students.map(s => s.id === id ? { ...s, isDeleted: true, deletedAt: now } : s) }));
@@ -960,7 +997,9 @@ const App: React.FC = () => {
           onManualSync={handleManualSync} 
         />;
       case ViewState.STUDENTS:
-        return <Students students={sessionStudents} classes={data.classes} fees={sessionFees} currency={currencySymbol} settings={data.settings} onAddStudent={handleAddStudent} onEditStudent={handleEditStudent} onDeleteStudent={handleSoftDeleteStudent} onAddClass={(name) => setData(prev => ({ ...prev, classes: [...prev.classes, name] }))} onDeleteClass={(name) => setData(prev => ({ ...prev, classes: prev.classes.filter(c => c !== name) }))} onNavigateToFees={id => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }} onViewProfile={id => { setSelectedStudentId(id); setCurrentView(ViewState.STUDENT_PROFILE); }} onViewParent={s => { setSelectedParent({ name: s.parentName, phone: s.phone, address: s.address || '' }); setCurrentView(ViewState.PARENT_PROFILE); }} onNavigateToInquiry={() => setCurrentView(ViewState.NEW_INQUIRY)} initialEditingId={studentIdToEdit} onClearEditingId={() => setStudentIdToEdit(null)} syncStatus={syncStatus} onManualSync={handleManualSync} session={data.schoolProfile.currentSession} />;
+        return <Students students={sessionStudents} classes={data.classes} fees={sessionFees} currency={currencySymbol} settings={data.settings} onAddStudent={handleAddStudent} onEditStudent={handleEditStudent} onDeleteStudent={handleSoftDeleteStudent} onAddClass={(name) => setData(prev => ({ ...prev, classes: [...prev.classes, name] }))} onDeleteClass={(name) => setData(prev => ({ ...prev, classes: prev.classes.filter(c => c !== name) }))} onNavigateToFees={id => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }} onViewProfile={id => { setSelectedStudentId(id); setCurrentView(ViewState.STUDENT_PROFILE); }} onViewParent={s => { setSelectedParent({ name: s.parentName, phone: s.phone, address: s.address || '' }); setCurrentView(ViewState.PARENT_PROFILE); }} onNavigateToInquiry={() => setCurrentView(ViewState.NEW_INQUIRY)} onNavigateToAttendance={() => setCurrentView(ViewState.ATTENDANCE)} initialEditingId={studentIdToEdit} onClearEditingId={() => setStudentIdToEdit(null)} syncStatus={syncStatus} onManualSync={handleManualSync} session={data.schoolProfile.currentSession} />;
+      case ViewState.ATTENDANCE:
+        return <Attendance students={sessionStudents} classes={data.classes} attendance={data.attendance} onSaveAttendance={handleSaveAttendance} onBack={() => setCurrentView(ViewState.STUDENTS)} />;
       case ViewState.EMPLOYEES:
         return <Employees employees={sessionEmployees} currency={currencySymbol} onAddEmployee={handleAddEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={handleDeleteEmployee} onViewProfile={id => { setSelectedEmployeeId(id); setCurrentView(ViewState.EMPLOYEE_PROFILE); }} onRecordPayment={handleRecordEmployeePayment} onNotify={showNotification} syncStatus={syncStatus} onManualSync={handleManualSync} session={data.schoolProfile.currentSession} />;
       case ViewState.EMPLOYEE_PROFILE:
@@ -1272,8 +1311,8 @@ const App: React.FC = () => {
                         repeat: Infinity, 
                         ease: "easeInOut" 
                       }}
-                      className="h-full w-1/2 rounded-full"
-                      style={{ backgroundColor: ls.progressBarColor }}
+                      className={`h-full w-1/2 rounded-full ${ls.useGradientProgress ? 'bg-gradient-to-r from-[#4285F4] via-[#EA4335] to-[#FBBC05]' : ''}`}
+                      style={{ backgroundColor: ls.useGradientProgress ? undefined : ls.progressBarColor }}
                     />
                   </div>
                 )}
@@ -1293,15 +1332,20 @@ const App: React.FC = () => {
                       className="text-[10px] md:text-xs font-black uppercase tracking-[0.2em] whitespace-nowrap"
                       style={{ color: ls.statusMessageColor }}
                     >
-                      {ls.statusMessages[activeStatusIdx]}
+                      {ls.statusMessages[activeStatusIdx]
+                        ?.replace('{{school}}', data.schoolProfile.name || 'School')
+                        ?.replace('{{session}}', data.schoolProfile.currentSession || 'Current Session')
+                        ?.replace('{{motto}}', data.schoolProfile.motto || 'Excellence in Education')}
                     </span>
                   </motion.div>
                 </div>
               )}
 
               {/* Minimal Info */}
-              <div className="pt-6 border-t border-slate-100 flex justify-center items-center text-[9px] font-black text-slate-400 uppercase tracking-[0.15em]">
-                <span>System v5.0.2 • Encrypted Link</span>
+              <div className="pt-6 border-t border-slate-100 flex justify-center items-center text-[9px] font-black text-slate-400 uppercase tracking-[0.15em] gap-2">
+                <span>{data.schoolProfile.name}</span>
+                <span className="text-slate-200">•</span>
+                <span>Session {data.schoolProfile.currentSession}</span>
               </div>
             </div>
           </motion.div>

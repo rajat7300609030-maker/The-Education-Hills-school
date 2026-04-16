@@ -1450,6 +1450,7 @@ const Settings: React.FC<SettingsProps> = ({
       { id: 'showFooter', label: 'Show Footer', icon: '🏁' },
       { id: 'showShimmer', label: 'Card Shimmer Effect', icon: '✨' },
       { id: 'showPulse', label: 'Logo Pulse Effect', icon: '💓' },
+      { id: 'useGradientProgress', label: 'Gradient Progress Bar', icon: '🌈' },
     ];
 
     return (
@@ -1485,11 +1486,13 @@ const Settings: React.FC<SettingsProps> = ({
                       animationSpeed: 1,
                       showShimmer: true,
                       showPulse: true,
+                      useGradientProgress: true,
                       statusMessages: [
-                        "Establishing Secure Connection",
-                        "Synchronizing Academic Records",
-                        "Optimizing System Modules",
-                        "Finalizing User Environment"
+                        "Connecting to {{school}}",
+                        "Syncing {{session}} Records",
+                        "{{motto}}",
+                        "Optimizing Campus Modules",
+                        "Finalizing Academic Environment"
                       ]
                     }
                   });

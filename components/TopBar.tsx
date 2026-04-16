@@ -61,6 +61,7 @@ const TopBar: React.FC<TopBarProps> = ({
       case ViewState.USER_PROFILE: return '👤 User Profile';
       case ViewState.SETTINGS: return '⚙️ App Settings';
       case ViewState.NEW_INQUIRY: return '📝 New Inquiry';
+      case ViewState.ATTENDANCE: return '📅 Student Attendance';
       default: return '🏫 EmojiSchool';
     }
   };
@@ -80,6 +81,7 @@ const TopBar: React.FC<TopBarProps> = ({
       case ViewState.USER_PROFILE: return 'from-indigo-900 via-blue-900 to-sky-900';
       case ViewState.SETTINGS: return 'from-slate-800 via-gray-800 to-zinc-800';
       case ViewState.NEW_INQUIRY: return 'from-blue-900 via-indigo-900 to-violet-900';
+      case ViewState.ATTENDANCE: return 'from-indigo-900 via-purple-900 to-fuchsia-900';
       default: return 'from-slate-900 to-slate-800';
     }
   };
