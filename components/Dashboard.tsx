@@ -27,8 +27,15 @@ import {
   Plus,
   StickyNote,
   Trash2,
-  Pin
+  Pin,
+  CalendarCheck,
+  MoreHorizontal,
+  Edit,
+  CreditCard,
+  Ban,
+  X
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface DashboardProps {
   data: AppData;
@@ -36,14 +43,20 @@ interface DashboardProps {
   onUpdateSettings: (settings: AppSettings) => void;
   onNavigateToFees: () => void;
   onNavigateToExpenses: () => void;
+  onNavigateToEmployees: () => void;
   onViewStudentProfile?: (id: string) => void;
   onNavigateToSettings?: () => void;
   onDeleteFee?: (id: string) => void;
   onDeleteExpense?: (id: string) => void;
+  onEditStudent?: (id: string) => void;
+  onSoftDeleteStudent?: (id: string) => void;
+  onRestoreStudent?: (id: string) => void;
+  onPayFees?: (id: string) => void;
   onAddNote: (content: string, color: string) => void;
   onDeleteNote: (id: string) => void;
   onTogglePinNote: (id: string) => void;
-  userRole?: 'ADMIN' | 'STUDENT';
+  onLogoutPortal?: () => void;
+  userRole?: 'ADMIN' | 'STUDENT' | 'EMPLOYEE';
   currentStudentId?: string;
   syncStatus?: 'synced' | 'syncing' | 'error';
   onManualSync?: () => Promise<void>;
@@ -101,14 +114,20 @@ const Dashboard: React.FC<DashboardProps> = ({
   data, 
   currency, 
   onNavigateToFees, 
-  onNavigateToExpenses, 
+  onNavigateToExpenses,
+  onNavigateToEmployees,
   onViewStudentProfile,
   onNavigateToSettings,
   onDeleteFee,
   onDeleteExpense,
+  onEditStudent,
+  onSoftDeleteStudent,
+  onRestoreStudent,
+  onPayFees,
   onAddNote,
   onDeleteNote,
   onTogglePinNote,
+  onLogoutPortal,
   userRole = 'ADMIN', 
   currentStudentId,
   syncStatus = 'synced',
@@ -287,6 +306,34 @@ const Dashboard: React.FC<DashboardProps> = ({
   }, [auditDate, activeFees, activeExpenses, auditInflow, auditOutflow, auditNet]);
 
   const [calendarDate, setCalendarDate] = useState(new Date());
+  
+  // Today's Attendance Card States
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [attendanceClass, setAttendanceClass] = useState<string>('');
+  const [activeMenuStudent, setActiveMenuStudent] = useState<string | null>(null);
+  const [showDisabledModal, setShowDisabledModal] = useState(false);
+
+  const disabledStudents = useMemo(() => 
+    data.students.filter(s => s.isDeleted && (!s.session || s.session === currentSession)),
+  [data.students, currentSession]);
+
+  const filteredAttendanceList = useMemo(() => {
+    if (!attendanceClass) return [];
+
+    const dailyRecords = data.attendance.filter(r => r.date === attendanceDate);
+    return activeStudents
+      .filter(s => s.grade === attendanceClass)
+      .map(s => {
+        const record = dailyRecords.find(r => r.studentId === s.id);
+        return {
+          ...s,
+          attendanceStatus: record?.status || 'Unmarked',
+          remarks: record?.remarks || ''
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [activeStudents, data.attendance, attendanceDate, attendanceClass]);
+
   const changeMonth = (offset: number) => {
     const newDate = new Date(calendarDate);
     newDate.setMonth(newDate.getMonth() + offset);
@@ -309,6 +356,12 @@ const Dashboard: React.FC<DashboardProps> = ({
     setAuditDate(dStr);
     setIsAuditModalOpen(true);
   };
+
+  const getAttendanceForDate = useCallback((day: number) => {
+    if (!currentStudentId || userRole !== 'STUDENT') return null;
+    const dateStr = `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return data.attendance.find(a => a.studentId === currentStudentId && a.date === dateStr);
+  }, [calendarDate, currentStudentId, userRole, data.attendance]);
 
   const handleSendReminder = (student: any) => {
     if (!student.phone) return;
@@ -400,6 +453,340 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <FinancialCard title="Total Expenses" rawValue={totalExpenses} currency={currency} icon="💸" gradient="bg-gradient-to-br from-orange-500 to-orange-700" delay={200} subValue="Session maintenance costs" />
                 <FinancialCard title="Net Balance" rawValue={netProfit} currency={currency} icon="📈" gradient="bg-gradient-to-br from-indigo-600 to-blue-800" delay={300} subValue="Current profit index" />
             </div>
+
+            {/* --- TODAY'S ATTENDANCE CARD --- */}
+            <div className="bg-white rounded-[3rem] shadow-xl border border-slate-100 overflow-hidden relative group hover:shadow-2xl transition-all duration-500 mb-8 mt-8">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-50/20 rounded-full blur-[100px] -mr-20 -mt-20 pointer-events-none"></div>
+                
+                <div className="p-8 md:p-10 relative z-10">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
+                        <div className="flex items-center gap-5">
+                            <div className="w-16 h-16 bg-indigo-600 text-white rounded-[1.5rem] flex items-center justify-center text-3xl shadow-xl shadow-indigo-100 border border-indigo-500 group-hover:scale-110 transition-transform">
+                                <CalendarCheck className="w-8 h-8" />
+                            </div>
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Daily Attendance</h3>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">Real-time status tracking</p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="relative group/input">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500">
+                                    <Calendar size={14} />
+                                </div>
+                                <input 
+                                    type="date"
+                                    value={attendanceDate}
+                                    onChange={(e) => setAttendanceDate(e.target.value)}
+                                    className="pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] font-black uppercase text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all w-full sm:w-40"
+                                />
+                            </div>
+                            <div className="relative group/input">
+                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500">
+                                    <Filter size={14} />
+                                </div>
+                                <select 
+                                    value={attendanceClass}
+                                    onChange={(e) => setAttendanceClass(e.target.value)}
+                                    className="pl-10 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-[11px] font-black uppercase text-slate-700 outline-none focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 transition-all appearance-none w-full sm:w-40"
+                                >
+                                    <option value="">Select Class</option>
+                                    {data.classes.map(c => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto -mx-10 px-10">
+                        <table className="w-full border-separate border-spacing-0">
+                            <thead>
+                                <tr className="uppercase">
+                                    <th className="text-left text-[10px] font-black text-slate-400 tracking-[0.2em] pb-6 border-b border-slate-50 px-6">Student Identity</th>
+                                    <th className="text-center text-[10px] font-black text-slate-400 tracking-[0.2em] pb-6 border-b border-slate-50 px-6">Current Status</th>
+                                    <th className="text-right text-[10px] font-black text-slate-400 tracking-[0.2em] pb-6 border-b border-slate-50 px-6">Quick Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {filteredAttendanceList.length > 0 ? (
+                                    filteredAttendanceList.map((s, idx) => (
+                                        <tr key={s.id} className="group/row hover:bg-slate-50/50 transition-colors">
+                                            <td className="py-5 px-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-12 h-12 rounded-xl border border-slate-100 shadow-sm flex-shrink-0 overflow-hidden bg-white">
+                                                        {s.photo ? (
+                                                            <img src={s.photo} className="w-full h-full object-cover" referrerPolicy="no-referrer" alt="" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-xl font-black text-slate-200 bg-slate-50 uppercase">{s.name.charAt(0)}</div>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-black text-slate-900 tracking-tight leading-none mb-1.5">{s.name}</p>
+                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{s.grade} • ID: {s.id.slice(-6)}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-5 px-6 text-center">
+                                                <div className="inline-flex items-center justify-center">
+                                                    {s.attendanceStatus === 'Present' && (
+                                                        <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-100 flex items-center gap-2">
+                                                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                                                            Present
+                                                        </span>
+                                                    )}
+                                                    {s.attendanceStatus === 'Absent' && (
+                                                        <span className="px-4 py-1.5 bg-rose-50 text-rose-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-rose-100 flex items-center gap-2">
+                                                            <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
+                                                            Absent
+                                                        </span>
+                                                    )}
+                                                    {s.attendanceStatus === 'Late' && (
+                                                        <span className="px-4 py-1.5 bg-amber-50 text-amber-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-100 flex items-center gap-2">
+                                                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+                                                            Late
+                                                        </span>
+                                                    )}
+                                                    {s.attendanceStatus === 'Leave' && (
+                                                        <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100 flex items-center gap-2">
+                                                            <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></span>
+                                                            Leave
+                                                        </span>
+                                                    )}
+                                                    {s.attendanceStatus === 'Unmarked' && (
+                                                        <span className="px-4 py-1.5 bg-slate-100 text-slate-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-200">
+                                                            Unmarked
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="py-5 px-6 text-right relative">
+                                                <div className="flex items-center justify-end">
+                                                    <button 
+                                                        onClick={() => setActiveMenuStudent(activeMenuStudent === s.id ? null : s.id)}
+                                                        className="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-50 transition-all flex items-center justify-center"
+                                                    >
+                                                        <MoreHorizontal size={18} />
+                                                    </button>
+
+                                                    <AnimatePresence>
+                                                        {activeMenuStudent === s.id && (
+                                                            <>
+                                                                <div 
+                                                                    className="fixed inset-0 z-40" 
+                                                                    onClick={() => setActiveMenuStudent(null)}
+                                                                />
+                                                                <motion.div 
+                                                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                                                    className="absolute right-6 top-16 w-56 bg-white rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] border border-slate-100 py-3 z-50 overflow-hidden ring-1 ring-slate-900/5"
+                                                                >
+                                                                    <div className="px-5 py-2 border-b border-slate-50 mb-2">
+                                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Quick Options</p>
+                                                                        <p className="text-xs font-bold text-slate-900 truncate tracking-tight">{s.name}</p>
+                                                                    </div>
+
+                                                                    <button 
+                                                                        onClick={() => { setActiveMenuStudent(null); onViewStudentProfile?.(s.id); }}
+                                                                        className="w-full px-5 py-2.5 text-left flex items-center gap-3 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-colors group/btn"
+                                                                    >
+                                                                        <User size={16} className="text-indigo-500 group-hover/btn:scale-110 transition-transform" />
+                                                                        <span className="text-[10px] font-black uppercase tracking-widest">Profile View</span>
+                                                                    </button>
+
+                                                                    <button 
+                                                                        onClick={() => { setActiveMenuStudent(null); onEditStudent?.(s.id); }}
+                                                                        className="w-full px-5 py-2.5 text-left flex items-center gap-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors group/btn"
+                                                                    >
+                                                                        <Edit size={16} className="text-blue-500 group-hover/btn:scale-110 transition-transform" />
+                                                                        <span className="text-[10px] font-black uppercase tracking-widest">Edit Records</span>
+                                                                    </button>
+
+                                                                    <button 
+                                                                        onClick={() => { setActiveMenuStudent(null); onPayFees?.(s.id); }}
+                                                                        className="w-full px-5 py-2.5 text-left flex items-center gap-3 text-slate-600 hover:bg-amber-50 hover:text-amber-600 transition-colors group/btn"
+                                                                    >
+                                                                        <CreditCard size={16} className="text-amber-500 group-hover/btn:scale-110 transition-transform" />
+                                                                        <span className="text-[10px] font-black uppercase tracking-widest">Fee Ledger</span>
+                                                                    </button>
+
+                                                                    </motion.div>
+                                                            </>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={3} className="py-24 text-center">
+                                            <div className="flex flex-col items-center gap-6 max-w-sm mx-auto opacity-40">
+                                                <div className="w-24 h-24 rounded-3xl bg-slate-50 flex items-center justify-center text-5xl grayscale border-4 border-dashed border-slate-200">
+                                                    {!attendanceClass ? '☝️' : '🔍'}
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <h4 className="text-lg font-black text-slate-800 tracking-tight uppercase">
+                                                        {!attendanceClass ? 'Please select a class' : 'No records matching filters'}
+                                                    </h4>
+                                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest italic">
+                                                        {!attendanceClass ? 'Choose a class from the dropdown above to view students' : 'Try changing the date or class filter'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {filteredAttendanceList.length > 0 && (
+                        <div className="mt-10 pt-10 border-t border-slate-50 flex flex-col sm:flex-row items-center justify-between gap-6">
+                            <div className="flex items-center gap-8">
+                                <div className="flex flex-col">
+                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Present Students</p>
+                                    <p className="text-xl font-black text-emerald-600 leading-none">{filteredAttendanceList.filter(s => s.attendanceStatus === 'Present').length}</p>
+                                </div>
+                                <div className="w-px h-8 bg-slate-100 hidden sm:block"></div>
+                                <div className="flex flex-col">
+                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Absent Students</p>
+                                    <p className="text-xl font-black text-rose-600 leading-none">{filteredAttendanceList.filter(s => s.attendanceStatus === 'Absent').length}</p>
+                                </div>
+                                <div className="w-px h-8 bg-slate-100 hidden sm:block"></div>
+                                <div className="flex flex-col">
+                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Unmarked Yet</p>
+                                    <p className="text-xl font-black text-slate-400 leading-none">{filteredAttendanceList.filter(s => s.attendanceStatus === 'Unmarked').length}</p>
+                                </div>
+                            </div>
+                            <button className="px-6 py-3 bg-slate-900 text-white rounded-[1.25rem] font-black text-[10px] uppercase tracking-widest flex items-center gap-3 hover:shadow-2xl hover:shadow-slate-200 transition-all active:scale-95 shadow-xl shadow-slate-100">
+                                Download Full Report <Download size={14} />
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* --- EMPLOYEES & STAFF ACCESS PORTAL CARD --- */}
+            <div className="bg-white rounded-[3rem] shadow-xl border border-slate-100 overflow-hidden relative group hover:shadow-2xl transition-all duration-500 mb-8 mt-8">
+                <div className="absolute top-0 left-0 w-64 h-64 bg-amber-50/30 rounded-full blur-3xl pointer-events-none -ml-20 -mt-20"></div>
+                <div className="p-8 md:p-10 relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div className="flex items-center gap-6">
+                        <div className="w-20 h-20 bg-amber-600 text-white rounded-[2rem] flex items-center justify-center text-4xl shadow-xl shadow-amber-100 border-4 border-white group-hover:rotate-6 transition-transform">
+                            👔
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Employees & Staff</h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-1">Management & Access Portal</p>
+                            <div className="flex items-center gap-3 mt-4">
+                                <div className="px-3 py-1 bg-amber-50 text-amber-600 rounded-lg text-[10px] font-black border border-amber-100">
+                                    {data.employees.length} Active Staff
+                                </div>
+                                <div className="px-3 py-1 bg-slate-50 text-slate-500 rounded-lg text-[10px] font-black border border-slate-100">
+                                    {data.employeeAttendance.filter(a => a.date === new Date().toISOString().split('T')[0]).length} Present Today
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <button 
+                            onClick={onNavigateToEmployees} 
+                            className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:bg-slate-800 transition-all active:scale-95"
+                        >
+                            Manage Staff ➞
+                        </button>
+                        <button 
+                            onClick={() => onLogoutPortal?.()} 
+                            className="px-8 py-4 bg-amber-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl shadow-amber-100 hover:bg-amber-700 transition-all active:scale-95"
+                        >
+                            Access Portal 🔒
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Disabled Students Modal */}
+            <AnimatePresence>
+                {showDisabledModal && (
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowDisabledModal(false)}
+                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+                        />
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9, y: 30 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 30 }}
+                            className="relative bg-white w-full max-w-2xl rounded-[3rem] p-8 md:p-10 shadow-2xl border border-slate-100 overflow-hidden"
+                        >
+                            <div className="flex items-center justify-between mb-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center text-2xl shadow-inner border border-rose-100">
+                                        <Ban size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Disabled Students</h3>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Archive Management</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setShowDisabledModal(false)}
+                                    className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-all active:scale-95 border border-slate-100"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+                                {disabledStudents.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
+                                        <div className="text-6xl mb-4">🍃</div>
+                                        <p className="font-black text-slate-500 uppercase tracking-widest text-xs">No disabled students found</p>
+                                    </div>
+                                ) : (
+                                    disabledStudents.map(student => (
+                                        <div 
+                                            key={student.id}
+                                            className="p-5 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center justify-between group hover:bg-white hover:shadow-xl hover:shadow-slate-200 transition-all"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center overflow-hidden grayscale">
+                                                    {student.photo ? (
+                                                        <img src={student.photo} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                                                    ) : (
+                                                        <span className="text-xl font-black text-slate-300">{student.name.charAt(0)}</span>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-black text-slate-900 uppercase tracking-tight">{student.name}</h4>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Class {student.grade} • ID: {student.id}</p>
+                                                </div>
+                                            </div>
+                                            
+                                            <button 
+                                                onClick={() => {
+                                                    if (window.confirm(`Restore ${student.name}?`)) {
+                                                        onRestoreStudent?.(student.id);
+                                                    }
+                                                }}
+                                                className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
+                                            >
+                                                <RefreshCw size={14} />
+                                                Available
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* --- ADSENSE MIDDLE BANNER --- */}
             {adsense?.enabled && adsense.clientId && adsense.units?.find(u => u.placement === 'dashboard_middle') && (
@@ -1020,18 +1407,43 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div className="grid grid-cols-7 text-center gap-4 flex-1">
                     {calendarDays.map((d, i) => {
                         const isToday = d === new Date().getDate() && calendarDate.getMonth() === new Date().getMonth() && calendarDate.getFullYear() === new Date().getFullYear();
+                        const attendance = d ? getAttendanceForDate(d) : null;
+                        const isPresent = attendance?.status === 'Present';
+                        const isAbsent = attendance?.status === 'Absent';
+                        const isLeave = attendance?.status === 'Leave' || attendance?.status === 'Late';
+
+                        let dayBgClass = 'bg-white border-slate-100 text-slate-600 hover:bg-indigo-50 hover:border-indigo-200';
+                        let dayTextClass = 'text-slate-600';
+                        
+                        if (d) {
+                          if (isToday) {
+                            dayBgClass = 'bg-indigo-600 text-white shadow-2xl scale-110 ring-8 ring-indigo-50 z-10';
+                            dayTextClass = 'text-white';
+                          } else if (isPresent) {
+                            dayBgClass = 'bg-blue-500 text-white shadow-lg border-blue-400 scale-105';
+                            dayTextClass = 'text-white';
+                          } else if (isAbsent) {
+                            dayBgClass = 'bg-rose-500 text-white shadow-lg border-rose-400 scale-105';
+                            dayTextClass = 'text-white';
+                          } else if (isLeave) {
+                            dayBgClass = 'bg-amber-500 text-white shadow-lg border-amber-400 scale-105';
+                            dayTextClass = 'text-white';
+                          }
+                        }
+
                         return (
                             <div 
                                 key={i} onClick={() => handleDateClick(d)}
                                 className={`aspect-square flex flex-col items-center justify-center rounded-[1.25rem] transition-all group/day relative ${
-                                    d ? isToday 
-                                        ? 'bg-indigo-600 text-white shadow-2xl scale-110 ring-8 ring-indigo-50 z-10 cursor-pointer' 
-                                        : 'bg-white border border-slate-100 text-slate-600 hover:bg-indigo-50 hover:border-indigo-200 cursor-pointer shadow-sm hover:scale-105' 
+                                    d ? `${dayBgClass} cursor-pointer shadow-sm hover:scale-110` 
                                     : 'opacity-0 pointer-events-none'
                                 }`}
                             >
-                                <span className="font-black text-lg">{d}</span>
+                                <span className={`font-black text-lg ${dayTextClass}`}>{d}</span>
                                 {d && isToday && <span className="absolute bottom-2 w-1.5 h-1.5 bg-white rounded-full"></span>}
+                                {d && !isToday && attendance && (
+                                  <span className="absolute bottom-2 w-1 h-1 bg-white/50 rounded-full"></span>
+                                )}
                             </div>
                         )
                     })}

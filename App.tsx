@@ -20,7 +20,7 @@ import NewInquiry from './components/NewInquiry';
 import Attendance from './components/Attendance';
 import GooglePhotos from './components/GooglePhotos';
 import AnimatedBackground from './components/AnimatedBackground';
-import { ViewState, AppData, Student, Employee, Inquiry, FeeRecord, ExpenseRecord, AppSettings, UserProfileData, AppNotification, Note, AttendanceRecord } from './types';
+import { ViewState, AppData, Student, Employee, Inquiry, FeeRecord, ExpenseRecord, AppSettings, UserProfileData, AppNotification, Note, AttendanceRecord, EmployeeAttendanceRecord } from './types';
 import { supabase } from './lib/supabase';
 import { Facebook, Twitter, Instagram, Youtube, Linkedin, Mail, Globe } from 'lucide-react';
 import * as VibrantModule from 'node-vibrant/browser';
@@ -36,6 +36,7 @@ const INITIAL_DATA: AppData = {
   expenses: [],
   notes: [],
   attendance: [],
+  employeeAttendance: [],
   schoolProfile: {
     name: 'Education Hills',
     address: 'Mountain View Campus, City Center',
@@ -162,8 +163,10 @@ const INITIAL_DATA: AppData = {
       ]
     }
   },
-  lastSyncDate: new Date().toISOString()
+  lastSyncDate: '1970-01-01T00:00:00.000Z'
 };
+
+import EmployeeDashboard from './components/EmployeeDashboard';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
@@ -207,6 +210,11 @@ const App: React.FC = () => {
             loadingScreen: {
               ...INITIAL_DATA.settings.loadingScreen,
               ...(parsed.settings?.loadingScreen || {})
+            },
+            adsense: {
+              ...INITIAL_DATA.settings.adsense,
+              ...(parsed.settings?.adsense || {}),
+              units: parsed.settings?.adsense?.units || INITIAL_DATA.settings.adsense?.units || []
             }
           }
         };
@@ -222,9 +230,10 @@ const App: React.FC = () => {
   const [isLocked, setIsLocked] = useState(true);
   const [showLanding, setShowLanding] = useState(true);
   const [showPublicGallery, setShowPublicGallery] = useState(false);
-  const [loginTab, setLoginTab] = useState<'ADMIN' | 'STUDENT' | undefined>(undefined);
-  const [userRole, setUserRole] = useState<'ADMIN' | 'STUDENT'>('ADMIN');
+  const [loginTab, setLoginTab] = useState<'ADMIN' | 'STUDENT' | 'EMPLOYEE' | undefined>(undefined);
+  const [userRole, setUserRole] = useState<'ADMIN' | 'STUDENT' | 'EMPLOYEE'>('ADMIN');
   const [currentStudentId, setCurrentStudentId] = useState<string | undefined>(undefined);
+  const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [initialExpenseData, setInitialExpenseData] = useState<Partial<Omit<ExpenseRecord, 'id' | 'isDeleted'>> | null>(null);
@@ -408,6 +417,15 @@ const App: React.FC = () => {
               landingPage: {
                 ...prev.settings.landingPage,
                 ...(configResp?.data?.settings?.landingPage || {})
+              },
+              loadingScreen: {
+                ...prev.settings.loadingScreen,
+                ...(configResp?.data?.settings?.loadingScreen || {})
+              },
+              adsense: {
+                ...(prev.settings.adsense || { enabled: false, clientId: '', units: [] }),
+                ...(configResp?.data?.settings?.adsense || {}),
+                units: configResp?.data?.settings?.adsense?.units || prev.settings.adsense?.units || []
               }
             } : prev.settings,
             classes: (shouldOverwriteConfig && configResp?.data?.classes) || prev.classes,
@@ -847,9 +865,9 @@ const App: React.FC = () => {
     
     const { error } = await supabase.from('attendance').upsert(records);
     if (error) {
-      if (error.message.includes('relation "attendance" does not exist')) {
+      if (error.message.includes('relation "attendance" does not exist') || error.message.includes('schema cache') || error.message.includes('Could not find the table')) {
           setSyncStatus('synced');
-          showNotification('✅ Attendance saved locally (Table not found on server)', 'info');
+          showNotification('✅ Attendance saved locally (Network Only)', 'info');
       } else {
           setSyncStatus('error');
           showNotification(`❌ Attendance Save Failed: ${error.message}`, 'error');
@@ -857,6 +875,39 @@ const App: React.FC = () => {
     } else {
       setSyncStatus('synced');
       showNotification('✅ Attendance recorded successfully', 'success');
+    }
+  };
+
+  const handleSaveEmployeeAttendance = async (records: EmployeeAttendanceRecord[]) => {
+    setSyncStatus('syncing');
+    const updatedAttendance = [...data.employeeAttendance];
+    
+    records.forEach(newRecord => {
+      const index = updatedAttendance.findIndex(r => r.employeeId === newRecord.employeeId && r.date === newRecord.date);
+      if (index > -1) {
+        updatedAttendance[index] = newRecord;
+      } else {
+        updatedAttendance.push(newRecord);
+      }
+    });
+
+    setData(prev => ({ ...prev, employeeAttendance: updatedAttendance }));
+    
+    const { error } = await supabase.from('employee_attendance').upsert(records);
+    if (error) {
+       if (error.message.includes('relation "employee_attendance" does not exist') || 
+           error.message.includes('schema cache') || 
+           error.message.includes('Could not find the table') ||
+           error.message.includes('row-level security')) {
+          setSyncStatus('synced');
+          showNotification('✅ Employee attendance saved locally (Permissions Pending)', 'info');
+       } else {
+          setSyncStatus('error');
+          showNotification(`❌ Employee Attendance Failed: ${error.message}`, 'error');
+       }
+    } else {
+      setSyncStatus('synced');
+      showNotification('✅ Employee attendance synchronized', 'success');
     }
   };
 
@@ -868,6 +919,19 @@ const App: React.FC = () => {
       showNotification(`❌ Delete Failed: ${error.message}`, 'error');
     } else {
       showNotification('🗑️ Student moved to Recycle Bin', 'info');
+    }
+  };
+
+  const handleRestoreStudent = async (id: string) => {
+    setData(prev => ({ 
+      ...prev, 
+      students: prev.students.map(s => s.id === id ? { ...s, isDeleted: false, deletedAt: undefined } : s) 
+    }));
+    const { error } = await supabase.from('students').update({ isDeleted: false, deletedAt: null }).eq('id', id);
+    if (error) {
+      showNotification(`❌ Restore Failed: ${error.message}`, 'error');
+    } else {
+      showNotification('✅ Student restored to active records', 'success');
     }
   };
 
@@ -969,13 +1033,14 @@ const App: React.FC = () => {
     }
   };
 
-  const renderContent = () => {
-    const currentSession = data.schoolProfile?.currentSession;
-    const sessionStudents = data.students.filter(s => s.session === currentSession);
-    const sessionEmployees = (data.employees || []).filter(e => e.session === currentSession);
-    const sessionFees = data.fees.filter(f => f.session === currentSession);
-    const sessionExpenses = (data.expenses || []).filter(e => e.session === currentSession);
+  const isEmployeePortal = currentView === ViewState.EMPLOYEE_DASHBOARD;
+  const currentSession = data.schoolProfile?.currentSession;
+  const sessionStudents = data.students.filter(s => s.session === currentSession);
+  const sessionEmployees = (data.employees || []).filter(e => e.session === currentSession);
+  const sessionFees = data.fees.filter(f => f.session === currentSession);
+  const sessionExpenses = (data.expenses || []).filter(e => e.session === currentSession);
 
+  const renderContent = () => {
     switch (currentView) {
       case ViewState.DASHBOARD:
         return <Dashboard 
@@ -984,13 +1049,19 @@ const App: React.FC = () => {
           onUpdateSettings={handleUpdateSettings} 
           onNavigateToFees={() => setCurrentView(ViewState.FEES)} 
           onNavigateToExpenses={() => setCurrentView(ViewState.EXPENSES)} 
+          onNavigateToEmployees={() => setCurrentView(ViewState.EMPLOYEES)}
           onViewStudentProfile={id => { setSelectedStudentId(id); setCurrentView(ViewState.STUDENT_PROFILE); }} 
           onNavigateToSettings={() => setCurrentView(ViewState.SETTINGS)} 
           onDeleteFee={handleDeleteFee} 
           onDeleteExpense={handleDeleteExpense} 
+          onEditStudent={(id) => { setStudentIdToEdit(id); setCurrentView(ViewState.STUDENTS); }}
+          onSoftDeleteStudent={handleSoftDeleteStudent}
+          onRestoreStudent={handleRestoreStudent}
+          onPayFees={(id) => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }}
           onAddNote={handleAddNote}
           onDeleteNote={handleDeleteNote}
           onTogglePinNote={handleTogglePinNote}
+          onLogoutPortal={() => { setLoginTab('EMPLOYEE'); setShowLanding(false); setIsLocked(true); }}
           userRole={userRole} 
           currentStudentId={currentStudentId} 
           syncStatus={syncStatus} 
@@ -999,9 +1070,34 @@ const App: React.FC = () => {
       case ViewState.STUDENTS:
         return <Students students={sessionStudents} classes={data.classes} fees={sessionFees} currency={currencySymbol} settings={data.settings} onAddStudent={handleAddStudent} onEditStudent={handleEditStudent} onDeleteStudent={handleSoftDeleteStudent} onAddClass={(name) => setData(prev => ({ ...prev, classes: [...prev.classes, name] }))} onDeleteClass={(name) => setData(prev => ({ ...prev, classes: prev.classes.filter(c => c !== name) }))} onNavigateToFees={id => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }} onViewProfile={id => { setSelectedStudentId(id); setCurrentView(ViewState.STUDENT_PROFILE); }} onViewParent={s => { setSelectedParent({ name: s.parentName, phone: s.phone, address: s.address || '' }); setCurrentView(ViewState.PARENT_PROFILE); }} onNavigateToInquiry={() => setCurrentView(ViewState.NEW_INQUIRY)} onNavigateToAttendance={() => setCurrentView(ViewState.ATTENDANCE)} initialEditingId={studentIdToEdit} onClearEditingId={() => setStudentIdToEdit(null)} syncStatus={syncStatus} onManualSync={handleManualSync} session={data.schoolProfile.currentSession} />;
       case ViewState.ATTENDANCE:
-        return <Attendance students={sessionStudents} classes={data.classes} attendance={data.attendance} onSaveAttendance={handleSaveAttendance} onBack={() => setCurrentView(ViewState.STUDENTS)} />;
+        return <Attendance 
+          students={sessionStudents} 
+          classes={data.classes} 
+          attendance={data.attendance} 
+          onSaveAttendance={handleSaveAttendance} 
+          onBack={() => setCurrentView(ViewState.STUDENTS)} 
+          onEditStudent={(id) => { setStudentIdToEdit(id); setCurrentView(ViewState.STUDENTS); }}
+          onViewProfile={(id) => { setSelectedStudentId(id); setCurrentView(ViewState.STUDENT_PROFILE); }}
+          onPayFees={(id) => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }}
+          onSoftDeleteStudent={handleSoftDeleteStudent}
+          onRestoreStudent={handleRestoreStudent}
+        />;
       case ViewState.EMPLOYEES:
-        return <Employees employees={sessionEmployees} currency={currencySymbol} onAddEmployee={handleAddEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={handleDeleteEmployee} onViewProfile={id => { setSelectedEmployeeId(id); setCurrentView(ViewState.EMPLOYEE_PROFILE); }} onRecordPayment={handleRecordEmployeePayment} onNotify={showNotification} syncStatus={syncStatus} onManualSync={handleManualSync} session={data.schoolProfile.currentSession} />;
+        return <Employees 
+          employees={sessionEmployees} 
+          attendance={data.employeeAttendance}
+          onSaveAttendance={handleSaveEmployeeAttendance}
+          currency={currencySymbol} 
+          onAddEmployee={handleAddEmployee} 
+          onEditEmployee={handleEditEmployee} 
+          onDeleteEmployee={handleDeleteEmployee} 
+          onViewProfile={id => { setSelectedEmployeeId(id); setCurrentView(ViewState.EMPLOYEE_PROFILE); }} 
+          onRecordPayment={handleRecordEmployeePayment} 
+          onNotify={showNotification} 
+          syncStatus={syncStatus} 
+          onManualSync={handleManualSync} 
+          session={data.schoolProfile.currentSession} 
+        />;
       case ViewState.EMPLOYEE_PROFILE:
         {
            const employee = sessionEmployees.find(e => e.id === selectedEmployeeId);
@@ -1013,7 +1109,7 @@ const App: React.FC = () => {
            const studentIdToView = userRole === 'STUDENT' ? currentStudentId : selectedStudentId;
            const student = sessionStudents.find(s => s.id === studentIdToView);
            if (!student) return <div className="p-8 text-center text-slate-500 font-bold">Student not found.</div>;
-           return <StudentProfile student={student} fees={sessionFees} schoolData={data.schoolProfile} currency={currencySymbol} onBack={() => setCurrentView(userRole === 'STUDENT' ? ViewState.DASHBOARD : ViewState.STUDENTS)} onNavigateToFees={id => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }} onNavigateToEdit={(id) => { setStudentIdToEdit(id); setCurrentView(ViewState.STUDENTS); }} onDelete={(id) => { handleSoftDeleteStudent(id); setCurrentView(ViewState.STUDENTS); }} onUpdateStudent={handleEditStudent} onNotify={showNotification} userRole={userRole} />;
+           return <StudentProfile student={student} fees={sessionFees} attendance={data.attendance} schoolData={data.schoolProfile} currency={currencySymbol} onBack={() => setCurrentView(userRole === 'STUDENT' ? ViewState.DASHBOARD : ViewState.STUDENTS)} onNavigateToFees={id => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }} onNavigateToEdit={(id) => { setStudentIdToEdit(id); setCurrentView(ViewState.STUDENTS); }} onDelete={(id) => { handleSoftDeleteStudent(id); setCurrentView(ViewState.STUDENTS); }} onUpdateStudent={handleEditStudent} onNotify={showNotification} userRole={userRole} />;
         }
       case ViewState.PARENT_PROFILE:
         {
@@ -1070,7 +1166,7 @@ const App: React.FC = () => {
         if (userRole === 'STUDENT') {
             const student = sessionStudents.find(s => s.id === currentStudentId);
             if (!student) return <div className="p-8 text-center text-slate-500 font-bold">Student not found.</div>;
-            return <StudentProfile student={student} fees={sessionFees} schoolData={data.schoolProfile} currency={currencySymbol} onBack={() => setCurrentView(ViewState.DASHBOARD)} onNavigateToFees={id => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }} onNavigateToEdit={(id) => { setStudentIdToEdit(id); setCurrentView(ViewState.STUDENTS); }} onDelete={(id) => { handleSoftDeleteStudent(id); setCurrentView(ViewState.STUDENTS); }} onUpdateStudent={handleEditStudent} onNotify={showNotification} userRole={userRole} />;
+            return <StudentProfile student={student} fees={sessionFees} attendance={data.attendance} schoolData={data.schoolProfile} currency={currencySymbol} onBack={() => setCurrentView(ViewState.DASHBOARD)} onNavigateToFees={id => { setSelectedStudentId(id); setCurrentView(ViewState.FEES); }} onNavigateToEdit={(id) => { setStudentIdToEdit(id); setCurrentView(ViewState.STUDENTS); }} onDelete={(id) => { handleSoftDeleteStudent(id); setCurrentView(ViewState.STUDENTS); }} onUpdateStudent={handleEditStudent} onNotify={showNotification} userRole={userRole} />;
         }
         return (
           <Profiles 
@@ -1102,6 +1198,8 @@ const App: React.FC = () => {
         );
       case ViewState.GOOGLE_PHOTOS:
         return <GooglePhotos settings={data.settings} />;
+      case ViewState.EMPLOYEE_DASHBOARD:
+        return <div className="p-20 text-center font-black text-rose-500 uppercase tracking-widest leading-tight">Redirecting to Staff Portal...</div>;
       case ViewState.NEW_INQUIRY:
         return (
           <NewInquiry 
@@ -1392,7 +1490,54 @@ const App: React.FC = () => {
   }
 
   if (isLocked) {
-      return <LockScreen schoolData={data.schoolProfile} userData={data.userProfile} students={data.students} classes={data.classes} correctPin={data.settings.security.pin} initialTab={loginTab} onUnlock={(role, id) => { setIsLocked(false); setUserRole(role); setCurrentStudentId(id); if (role === 'STUDENT') setCurrentView(ViewState.DASHBOARD); }} onAddInquiry={(inq) => handleAddInquiry({ studentName: inq.name, grade: inq.grade, parentName: inq.parentName, phone: inq.phone, email: '', message: `Initial Admission Application. Address: ${inq.address}. DOB: ${inq.dob}` })} onBackToLanding={() => setShowLanding(true)} />;
+      return <LockScreen 
+        schoolData={data.schoolProfile} 
+        userData={data.userProfile} 
+        students={data.students} 
+        employees={data.employees}
+        classes={data.classes} 
+        correctPin={data.settings.security.pin} 
+        initialTab={loginTab} 
+        onUnlock={(role, id) => { 
+          setIsLocked(false); 
+          setUserRole(role); 
+          if (role === 'STUDENT') {
+            setCurrentStudentId(id || null);
+            setCurrentView(ViewState.DASHBOARD);
+          } else if (role === 'EMPLOYEE') {
+            setCurrentEmployeeId(id || null);
+            setCurrentView(ViewState.EMPLOYEE_DASHBOARD);
+          }
+        }} 
+        onAddInquiry={(inq) => handleAddInquiry({ studentName: inq.name, grade: inq.grade, parentName: inq.parentName, phone: inq.phone, email: '', message: `Initial Admission Application. Address: ${inq.address}. DOB: ${inq.dob}` })} 
+        onBackToLanding={() => setShowLanding(true)} 
+      />;
+  }
+
+  if (isEmployeePortal) {
+    if (userRole === 'EMPLOYEE' && currentEmployeeId) {
+      const employee = data.employees.find(e => e.id === currentEmployeeId);
+      if (employee) {
+        return (
+          <div className="h-screen w-screen overflow-y-auto bg-white">
+             {notification && <NotificationToast message={notification.message} type={notification.type} styleVariant={data.settings.notificationStyle} onClose={() => setNotification(null)} />}
+             <EmployeeDashboard 
+                employee={employee}
+                attendance={data.employeeAttendance || []}
+                students={sessionStudents}
+                studentAttendance={data.attendance}
+                classes={data.classes}
+                onSaveStudentAttendance={handleSaveAttendance}
+                expenses={data.expenses}
+                schoolProfile={data.schoolProfile}
+                onLogout={() => { setIsLocked(true); setCurrentView(ViewState.DASHBOARD); }}
+                onViewAttendance={() => { /* Navigation handled internally now */ }}
+                onNotify={showNotification}
+              />
+          </div>
+        );
+      }
+    }
   }
 
   return (

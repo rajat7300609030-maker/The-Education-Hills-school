@@ -16,7 +16,8 @@ export enum ViewState {
   LOCK = 'LOCK',
   NEW_INQUIRY = 'NEW_INQUIRY',
   GOOGLE_PHOTOS = 'GOOGLE_PHOTOS',
-  ATTENDANCE = 'ATTENDANCE'
+  ATTENDANCE = 'ATTENDANCE',
+  EMPLOYEE_DASHBOARD = 'EMPLOYEE_DASHBOARD'
 }
 
 export interface AppNotification {
@@ -64,6 +65,7 @@ export interface Employee {
   phone: string;
   email: string;
   joiningDate: string;
+  dob?: string;
   status: 'Active' | 'Resigned';
   photo?: string;
   isDeleted: boolean;
@@ -293,6 +295,15 @@ export interface AttendanceRecord {
   session?: string;
 }
 
+export interface EmployeeAttendanceRecord {
+  id: string;
+  employeeId: string;
+  date: string;
+  status: 'Present' | 'Absent' | 'Late' | 'Leave';
+  remarks?: string;
+  session?: string;
+}
+
 export interface AppData {
   students: Student[];
   employees: Employee[];
@@ -303,6 +314,7 @@ export interface AppData {
   expenses: ExpenseRecord[];
   notes: Note[];
   attendance: AttendanceRecord[];
+  employeeAttendance: EmployeeAttendanceRecord[];
   schoolProfile: SchoolProfileData;
   userProfile: UserProfileData;
   settings: AppSettings;

@@ -8,7 +8,8 @@ import {
   Save, ArrowLeft, MoreHorizontal, Download, 
   ListChecks, Trash2, ChevronLeft, 
   ChevronRight as ChevronRightIcon,
-  FileText, User, CreditCard, Ban, Edit, X
+  FileText, User, CreditCard, Ban, Edit, X,
+  RefreshCw
 } from 'lucide-react';
 
 interface AttendanceProps {
@@ -21,11 +22,13 @@ interface AttendanceProps {
   onViewProfile?: (studentId: string) => void;
   onPayFees?: (studentId: string) => void;
   onSoftDeleteStudent?: (studentId: string) => void;
+  onRestoreStudent?: (studentId: string) => void;
 }
 
 const Attendance: React.FC<AttendanceProps> = ({ 
   students, classes, attendance, onSaveAttendance, onBack,
-  onEditStudent, onViewProfile, onPayFees, onSoftDeleteStudent
+  onEditStudent, onViewProfile, onPayFees, onSoftDeleteStudent,
+  onRestoreStudent
 }) => {
   const [selectedClass, setSelectedClass] = useState(classes[0] || '');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -38,6 +41,46 @@ const Attendance: React.FC<AttendanceProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingUpdate, setPendingUpdate] = useState<{ studentId: string; status: 'Present' | 'Absent' | 'Late' | 'Leave' } | null>(null);
+
+  // Report Modal State
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportStudentId, setReportStudentId] = useState('');
+  const [reportMonth, setReportMonth] = useState(new Date().getMonth());
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
+
+  const [showDisabledModal, setShowDisabledModal] = useState(false);
+
+  // Action Confirmation State
+  const [actionConfirm, setActionConfirm] = useState<{
+    show: boolean;
+    type: 'DISABLE' | 'AVAILABLE';
+    studentId: string;
+    studentName: string;
+  }>({ show: false, type: 'DISABLE', studentId: '', studentName: '' });
+
+  const handleActionConfirm = () => {
+    if (actionConfirm.type === 'DISABLE') {
+      onSoftDeleteStudent?.(actionConfirm.studentId);
+    } else {
+      onRestoreStudent?.(actionConfirm.studentId);
+    }
+    setActionConfirm({ ...actionConfirm, show: false });
+  };
+
+  const statsByMonth = useMemo(() => {
+    if (!reportStudentId) return { present: 0, absent: 0 };
+    const monthRecords = attendance.filter(r => {
+      const [year, month, day] = r.date.split('-').map(Number);
+      return r.studentId === reportStudentId && 
+             (month - 1) === reportMonth && 
+             year === reportYear;
+    });
+    
+    const present = monthRecords.filter(r => r.status === 'Present' || r.status === 'Late').length;
+    const absent = monthRecords.filter(r => r.status === 'Absent').length;
+    
+    return { present, absent };
+  }, [reportStudentId, reportMonth, reportYear, attendance]);
 
   // Calendar Modal State
   const [showCalendarModal, setShowCalendarModal] = useState(false);
@@ -279,6 +322,10 @@ const Attendance: React.FC<AttendanceProps> = ({
     return students.filter(s => s.grade === modalClass && !s.isDeleted);
   }, [students, modalClass]);
 
+  const disabledStudents = useMemo(() => {
+    return students.filter(s => s.isDeleted);
+  }, [students]);
+
   const selectedStudentAttendance = useMemo(() => {
     if (!calendarSelectedDate || !modalStudentId) return null;
     return attendance.find(r => r.studentId === modalStudentId && r.date === calendarSelectedDate);
@@ -426,6 +473,19 @@ const Attendance: React.FC<AttendanceProps> = ({
                   />
                 </div>
               </div>
+              
+              <button 
+                onClick={() => setShowDisabledModal(true)}
+                className="w-full mt-4 bg-white/10 hover:bg-white/20 text-white/90 p-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3 transition-all border border-white/10 group active:scale-95"
+              >
+                <Ban size={18} className="text-rose-400 group-hover:scale-110 transition-transform" />
+                Disabled Students
+                {disabledStudents.length > 0 && (
+                  <span className="bg-rose-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full ml-1">
+                    {disabledStudents.length}
+                  </span>
+                )}
+              </button>
             </div>
 
             </div>
@@ -558,17 +618,110 @@ const Attendance: React.FC<AttendanceProps> = ({
                           </div>
                        </td>
                        <td className="px-8 py-5 text-right">
-                          <div className="flex items-center justify-end gap-3 group/remark">
-                            <input 
-                              type="text" 
-                              value={localRemarks[student.id] || ''}
-                              onChange={(e) => handleRemarkChange(student.id, e.target.value)}
-                              placeholder="Add observation..."
-                              className="text-xs font-bold p-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-200 w-56 lg:w-72 transition-all hover:bg-white placeholder:text-slate-400"
-                            />
-                            <button className="p-2 text-slate-300 hover:text-slate-600 transition-colors lg:opacity-0 lg:group-hover/remark:opacity-100">
-                              <MoreHorizontal size={18} />
+                          <input 
+                            type="text" 
+                            value={localRemarks[student.id] || ''}
+                            onChange={(e) => handleRemarkChange(student.id, e.target.value)}
+                            placeholder="Remark..."
+                            className="text-xs font-bold p-3 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-indigo-50 focus:border-indigo-200 w-56 lg:w-72 transition-all hover:bg-white placeholder:text-slate-400"
+                          />
+                       </td>
+                       <td className="px-8 py-5 text-right">
+                          <div className="relative inline-block text-left">
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMenuStudent(activeMenuStudent === student.id ? null : student.id);
+                              }}
+                              className={`p-2 rounded-xl transition-all ${activeMenuStudent === student.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-300 hover:text-slate-600 hover:bg-slate-100'}`}
+                            >
+                               <MoreHorizontal size={18} />
                             </button>
+
+                            <AnimatePresence>
+                              {activeMenuStudent === student.id && (
+                                <>
+                                  <div 
+                                    className="fixed inset-0 z-40" 
+                                    onClick={() => setActiveMenuStudent(null)}
+                                  />
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                    className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] border border-slate-100 py-2 z-50 overflow-hidden"
+                                  >
+                                    <div className="px-4 py-2 border-b border-slate-50 mb-1 text-left">
+                                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Options</p>
+                                      <p className="text-xs font-bold text-slate-900 truncate tracking-tight">{student.name}</p>
+                                    </div>
+                                    
+                                    <button 
+                                      onClick={() => {
+                                        setActiveMenuStudent(null);
+                                        setReportStudentId(student.id);
+                                        setShowReportModal(true);
+                                      }}
+                                      className="w-full px-4 py-2.5 text-left flex items-center gap-3 text-slate-600 hover:bg-slate-50 transition-colors"
+                                    >
+                                      <FileText size={16} className="text-indigo-500" />
+                                      <span className="text-[11px] font-black uppercase tracking-widest">Report</span>
+                                    </button>
+
+                                    <button 
+                                      onClick={() => {
+                                        setActiveMenuStudent(null);
+                                        onEditStudent?.(student.id);
+                                      }}
+                                      className="w-full px-4 py-2.5 text-left flex items-center gap-3 text-slate-600 hover:bg-slate-50 transition-colors"
+                                    >
+                                      <Edit size={16} className="text-blue-500" />
+                                      <span className="text-[11px] font-black uppercase tracking-widest">Edit Student</span>
+                                    </button>
+
+                                    <button 
+                                      onClick={() => {
+                                        setActiveMenuStudent(null);
+                                        onViewProfile?.(student.id);
+                                      }}
+                                      className="w-full px-4 py-2.5 text-left flex items-center gap-3 text-slate-600 hover:bg-slate-50 transition-colors"
+                                    >
+                                      <User size={16} className="text-emerald-500" />
+                                      <span className="text-[11px] font-black uppercase tracking-widest">View Profile</span>
+                                    </button>
+
+                                    <button 
+                                      onClick={() => {
+                                        setActiveMenuStudent(null);
+                                        onPayFees?.(student.id);
+                                      }}
+                                      className="w-full px-4 py-2.5 text-left flex items-center gap-3 text-slate-600 hover:bg-slate-50 transition-colors"
+                                    >
+                                      <CreditCard size={16} className="text-amber-500" />
+                                      <span className="text-[11px] font-black uppercase tracking-widest">Pay Fees</span>
+                                    </button>
+
+                                    <div className="h-px bg-slate-50 my-1" />
+
+                                    <button 
+                                      onClick={() => {
+                                        setActiveMenuStudent(null);
+                                        setActionConfirm({
+                                          show: true,
+                                          type: 'DISABLE',
+                                          studentId: student.id,
+                                          studentName: student.name
+                                        });
+                                      }}
+                                      className="w-full px-4 py-2.5 text-left flex items-center gap-3 text-red-500 hover:bg-red-50 transition-colors"
+                                    >
+                                      <Ban size={16} />
+                                      <span className="text-[11px] font-black uppercase tracking-widest text-red-500">Disable</span>
+                                    </button>
+                                  </motion.div>
+                                </>
+                              )}
+                            </AnimatePresence>
                           </div>
                        </td>
                      </motion.tr>
@@ -944,6 +1097,201 @@ const Attendance: React.FC<AttendanceProps> = ({
           </div>
         )}
       </AnimatePresence>
+      {/* Report Modal */}
+      <AnimatePresence>
+        {showReportModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowReportModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-lg bg-white rounded-[3rem] shadow-2xl overflow-hidden border border-slate-100"
+            >
+              <div className="p-8 space-y-8">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                      <span className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><FileText size={20} /></span>
+                      Attendance Report
+                    </h3>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Monthly Analytics</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowReportModal(false)}
+                    className="p-3 bg-slate-50 text-slate-400 hover:text-slate-900 rounded-2xl transition-all"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {reportStudentId && (
+                  <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-3xl border border-slate-100">
+                    <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden">
+                      {students.find(s => s.id === reportStudentId)?.photo ? (
+                        <img 
+                          src={students.find(s => s.id === reportStudentId)?.photo} 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                          alt="" 
+                        />
+                      ) : (
+                        <span className="text-xl font-black text-slate-300">
+                          {students.find(s => s.id === reportStudentId)?.name.charAt(0)}
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-900 text-lg uppercase tracking-tight">
+                        {students.find(s => s.id === reportStudentId)?.name}
+                      </h4>
+                      <p className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg inline-block uppercase tracking-widest">
+                         {students.find(s => s.id === reportStudentId)?.grade} • #{reportStudentId}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Select Month</label>
+                    <select 
+                      value={reportMonth}
+                      onChange={(e) => setReportMonth(parseInt(e.target.value))}
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-xs uppercase tracking-widest focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all outline-none"
+                    >
+                      {Array.from({ length: 12 }).map((_, i) => (
+                        <option key={i} value={i}>
+                          {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Select Year</label>
+                    <select 
+                      value={reportYear}
+                      onChange={(e) => setReportYear(parseInt(e.target.value))}
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-xs uppercase tracking-widest focus:ring-4 focus:ring-indigo-100 focus:border-indigo-300 transition-all outline-none"
+                    >
+                      {[2024, 2025, 2026].map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="bg-emerald-50 p-6 rounded-[2rem] border border-emerald-100 shadow-xl shadow-emerald-50/50 flex flex-col items-center text-center group hover:-translate-y-1 transition-all">
+                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-xl mb-3 shadow-sm group-hover:scale-110 transition-transform">✅</div>
+                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">Present</p>
+                    <h5 className="text-3xl font-black text-slate-900 tracking-tighter">{statsByMonth.present}</h5>
+                  </div>
+                  <div className="bg-rose-50 p-6 rounded-[2rem] border border-rose-100 shadow-xl shadow-rose-50/50 flex flex-col items-center text-center group hover:-translate-y-1 transition-all">
+                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-xl mb-3 shadow-sm group-hover:scale-110 transition-transform">🚨</div>
+                    <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">Absent</p>
+                    <h5 className="text-3xl font-black text-slate-900 tracking-tighter">{statsByMonth.absent}</h5>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setShowReportModal(false)}
+                  className="w-full bg-slate-900 text-white p-5 rounded-[1.75rem] font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-slate-200 hover:bg-slate-800 transition-all active:scale-[0.98]"
+                >
+                  Close Analytics
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Disabled Students Modal */}
+      <AnimatePresence>
+        {showDisabledModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDisabledModal(false)}
+              className="absolute inset-0 bg-slate-900/80 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-2xl rounded-[3rem] p-8 shadow-2xl border border-slate-100 overflow-hidden"
+            >
+               <div className="flex items-center justify-between mb-8">
+                  <div className="space-y-1">
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                      <div className="p-2 bg-rose-50 text-rose-600 rounded-xl"><Ban size={24} /></div>
+                      Disabled Students
+                    </h3>
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1">Removed from active roster</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowDisabledModal(false)}
+                    className="p-3 bg-slate-50 text-slate-400 hover:text-slate-900 rounded-2xl transition-all"
+                  >
+                    <X size={20} />
+                  </button>
+               </div>
+
+               <div className="max-h-[60vh] overflow-y-auto pr-2 space-y-4 no-scrollbar">
+                  {disabledStudents.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
+                       <div className="text-6xl mb-4">🍃</div>
+                       <p className="font-black text-slate-500 uppercase tracking-widest text-xs">No disabled students found</p>
+                    </div>
+                  ) : (
+                    disabledStudents.map(student => (
+                      <div 
+                        key={student.id}
+                        className="p-5 bg-slate-50 rounded-[2rem] border border-slate-100 flex items-center justify-between group hover:bg-white hover:shadow-xl hover:shadow-slate-200 transition-all"
+                      >
+                         <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center overflow-hidden grayscale">
+                               {student.photo ? (
+                                 <img src={student.photo} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
+                               ) : (
+                                 <span className="text-xl font-black text-slate-300">{student.name.charAt(0)}</span>
+                               )}
+                            </div>
+                            <div>
+                               <h4 className="font-black text-slate-900 uppercase tracking-tight">{student.name}</h4>
+                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Class {student.grade} • ID: {student.id}</p>
+                            </div>
+                         </div>
+                         
+                         <button 
+                           onClick={() => setActionConfirm({
+                             show: true,
+                             type: 'AVAILABLE',
+                             studentId: student.id,
+                             studentName: student.name
+                           })}
+                           className="px-6 py-3 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
+                         >
+                           <RefreshCw size={14} />
+                           Available
+                         </button>
+                      </div>
+                    ))
+                  )}
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Calendar Quick View Modal */}
       <AnimatePresence>
         {showCalendarModal && (
@@ -1049,6 +1397,60 @@ const Attendance: React.FC<AttendanceProps> = ({
                 >
                   Manage This Date
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Action Confirmation Modal */}
+      <AnimatePresence>
+        {actionConfirm.show && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActionConfirm({ ...actionConfirm, show: false })}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border border-slate-100"
+            >
+              <div className="flex flex-col items-center text-center gap-6">
+                <div className={`w-20 h-20 rounded-3xl flex items-center justify-center text-3xl animate-bounce-subtle ${
+                  actionConfirm.type === 'DISABLE' ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'
+                }`}>
+                  {actionConfirm.type === 'DISABLE' ? '⚠️' : '✨'}
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                    {actionConfirm.type === 'DISABLE' ? 'Disable Student?' : 'Restore Student?'}
+                  </h3>
+                  <p className="text-slate-500 font-bold leading-relaxed px-4 text-sm">
+                    Are you sure you want to {actionConfirm.type === 'DISABLE' ? 'disable' : 'restore'} <span className={`${actionConfirm.type === 'DISABLE' ? 'text-rose-600' : 'text-emerald-600'} font-black`}>{actionConfirm.studentName}</span>? 
+                    {actionConfirm.type === 'DISABLE' ? ' They will be moved to the disabled list.' : ' They will be returned to active status.'}
+                  </p>
+                </div>
+                
+                <div className="flex gap-3 w-full mt-2">
+                  <button 
+                    onClick={() => setActionConfirm({ ...actionConfirm, show: false })}
+                    className="flex-1 px-6 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95"
+                  >
+                    No, Cancel
+                  </button>
+                  <button 
+                    onClick={handleActionConfirm}
+                    className={`flex-[1.5] px-6 py-4 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2 ${
+                      actionConfirm.type === 'DISABLE' ? 'bg-rose-600 shadow-rose-100 hover:bg-rose-700' : 'bg-emerald-600 shadow-emerald-100 hover:bg-emerald-700'
+                    }`}
+                  >
+                    Yes, Proceed
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

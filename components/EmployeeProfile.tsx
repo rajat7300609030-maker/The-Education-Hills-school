@@ -119,6 +119,13 @@ const EmployeeProfile: React.FC<EmployeeProfileProps> = ({
                     <p className="font-bold text-slate-700">{formatDate(employee.joiningDate)}</p>
                   </div>
                 </div>
+                <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <span className="text-2xl">🎂</span>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date of Birth</p>
+                    <p className="font-bold text-slate-700">{employee.dob ? formatDate(employee.dob) : 'Not Provided'}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

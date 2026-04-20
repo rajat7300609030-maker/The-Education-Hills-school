@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { Student, FeeRecord, SchoolProfileData } from '../types';
+import { Student, FeeRecord, SchoolProfileData, AttendanceRecord } from '../types';
 
 interface StudentProfileProps {
   student: Student;
   fees: FeeRecord[];
+  attendance: AttendanceRecord[];
   schoolData: SchoolProfileData;
   currency: string;
   onBack: () => void;
@@ -19,6 +20,7 @@ interface StudentProfileProps {
 const StudentProfile: React.FC<StudentProfileProps> = ({ 
     student, 
     fees, 
+    attendance,
     schoolData,
     currency,
     onBack, 
@@ -35,6 +37,31 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
   const [selectedDesign, setSelectedDesign] = useState<'Classic' | 'Modern' | 'Vibrant'>('Modern');
   const [activeProfileTab, setActiveProfileTab] = useState<'ID' | 'TC'>('ID');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [calendarDate, setCalendarDate] = useState(new Date());
+
+  const calendarDays = useMemo(() => {
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    const days: (number | null)[] = Array(firstDay).fill(null);
+    for (let i = 1; i <= daysInMonth; i++) {
+        days.push(i);
+    }
+    return days;
+  }, [calendarDate]);
+
+  const getDayAttendance = (day: number) => {
+    const dateStr = `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return attendance.filter(a => a.studentId === student.id && a.date === dateStr)[0];
+  };
+
+  const changeMonth = (offset: number) => {
+    const newDate = new Date(calendarDate);
+    newDate.setMonth(newDate.getMonth() + offset);
+    setCalendarDate(newDate);
+  };
 
   // TC Customization State
   const [tcDetails, setTcDetails] = useState({
@@ -484,6 +511,111 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                        )}
                   </div>
               </div>
+
+              {/* ATTENDANCE CALENDAR SECTION */}
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100"
+              >
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                      <div>
+                          <h3 className="text-xl font-black text-slate-800 flex items-center gap-3">
+                              <span className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shadow-sm">📅</span>
+                              Attendance Tracking
+                          </h3>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1 ml-13">Visual History & Status</p>
+                      </div>
+                      
+                      <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                          <button 
+                            onClick={() => changeMonth(-1)}
+                            className="w-10 h-10 flex items-center justify-center hover:bg-white rounded-xl text-slate-500 transition-all font-black text-xs"
+                          >
+                            ◀
+                          </button>
+                          <div className="px-4 text-center min-w-[140px]">
+                              <p className="text-xs font-black uppercase tracking-widest text-slate-700">
+                                  {calendarDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                              </p>
+                          </div>
+                          <button 
+                            onClick={() => changeMonth(1)}
+                            className="w-10 h-10 flex items-center justify-center hover:bg-white rounded-xl text-slate-500 transition-all font-black text-xs"
+                          >
+                            ▶
+                          </button>
+                      </div>
+                  </div>
+
+                  <div className="grid grid-cols-7 text-center mb-4">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                          <div key={d} className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{d}</div>
+                      ))}
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-3">
+                      {calendarDays.map((d, i) => {
+                          if (!d) return <div key={i} className="aspect-square opacity-0"></div>;
+                          
+                          const att = getDayAttendance(d);
+                          const isToday = d === new Date().getDate() && calendarDate.getMonth() === new Date().getMonth() && calendarDate.getFullYear() === new Date().getFullYear();
+                          const isPresent = att?.status === 'Present';
+                          const isAbsent = att?.status === 'Absent';
+                          const isLate = att?.status === 'Late';
+                          const isLeave = att?.status === 'Leave';
+
+                          let bgClass = 'bg-slate-50 text-slate-400 hover:bg-indigo-50';
+                          let dotColor = '';
+
+                          if (isPresent) {
+                              bgClass = 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-2 ring-blue-100';
+                          } else if (isAbsent) {
+                              bgClass = 'bg-rose-500 text-white shadow-lg shadow-rose-200 ring-2 ring-rose-100';
+                          } else if (isLate) {
+                              bgClass = 'bg-amber-500 text-white shadow-lg shadow-amber-200 ring-2 ring-amber-100';
+                          } else if (isLeave) {
+                              bgClass = 'bg-purple-500 text-white shadow-lg shadow-purple-200 ring-2 ring-purple-100';
+                          } else if (isToday) {
+                              bgClass = 'bg-white border-2 border-indigo-500 text-indigo-600 shadow-sm';
+                          }
+
+                          return (
+                              <div 
+                                key={i}
+                                className={`aspect-square rounded-2xl flex flex-col items-center justify-center transition-all relative group cursor-default ${bgClass}`}
+                              >
+                                  <span className="font-black text-sm">{d}</span>
+                                  {isToday && !isPresent && !isAbsent && !isLate && !isLeave && (
+                                     <span className="absolute bottom-1.5 w-1 h-1 bg-indigo-500 rounded-full"></span>
+                                  )}
+                                  
+                                  {/* Tooltip on Hover */}
+                                  {att && (
+                                     <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-2xl">
+                                        {att.status} {att.remarks ? `• ${att.remarks}` : ''}
+                                     </div>
+                                  )}
+                              </div>
+                          );
+                      })}
+                  </div>
+
+                  <div className="mt-8 flex flex-wrap gap-4 pt-6 border-t border-slate-50">
+                      {[
+                        { label: 'Present', color: 'bg-blue-500' },
+                        { label: 'Absent', color: 'bg-rose-500' },
+                        { label: 'Late', color: 'bg-amber-500' },
+                        { label: 'Leave', color: 'bg-purple-500' }
+                      ].map(item => (
+                        <div key={item.label} className="flex items-center gap-2">
+                           <span className={`w-3 h-3 rounded-full ${item.color}`}></span>
+                           <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.label}</span>
+                        </div>
+                      ))}
+                  </div>
+              </motion.div>
 
               {/* DOCUMENT TABS SECTION */}
               <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 overflow-hidden flex flex-col">

@@ -40,7 +40,7 @@ import {
 } from 'lucide-react';
 
 interface LandingPageProps {
-  onLogin: (role?: 'ADMIN' | 'STUDENT') => void;
+  onLogin: (role?: 'ADMIN' | 'STUDENT' | 'EMPLOYEE') => void;
   notes: Note[];
   schoolProfile: {
     name: string;
@@ -241,12 +241,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, notes, schoolProfile
             </div>
           </div>
 
-          <button 
-            onClick={() => onLogin('ADMIN')}
-            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-full text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg shrink-0"
-          >
-            Login <ArrowRight size={14} />
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            <button 
+              onClick={() => onLogin('ADMIN')}
+              className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-full text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg"
+            >
+              👑 Admin <ArrowRight size={14} className="hidden sm:inline" />
+            </button>
+            <button 
+              onClick={() => onLogin('EMPLOYEE')}
+              className="flex items-center gap-2 px-6 py-2.5 bg-amber-600 text-white rounded-full text-xs font-black uppercase tracking-widest hover:bg-amber-700 transition-all shadow-md hover:shadow-lg"
+            >
+              👔 Staff <ArrowRight size={14} className="hidden sm:inline" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1087,8 +1095,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, notes, schoolProfile
                     
                     <button 
                       onClick={() => {
-                        if (item.title === 'Administration' || item.title === 'Employees & Staff') {
+                        if (item.title === 'Administration') {
                           onLogin('ADMIN');
+                        } else if (item.title === 'Employees & Staff') {
+                          onLogin('EMPLOYEE');
                         } else {
                           onLogin('STUDENT');
                         }
@@ -1483,9 +1493,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, notes, schoolProfile
                 </div>
               </div>
               <div className="bg-slate-50 rounded-[3rem] p-4 space-y-4">
-                {['Admin Access', 'Teacher Access', 'Students and Parents'].map((link, idx) => (
-                  <button key={idx} onClick={() => onLogin(link === 'Students and Parents' ? 'STUDENT' : 'ADMIN')} className="w-full p-6 bg-white rounded-[2rem] flex items-center justify-center text-sm font-black text-slate-800 shadow-sm hover:shadow-md transition-all border border-slate-50">
-                    {link}
+                {[
+                  { label: 'Admin Access', role: 'ADMIN' as const },
+                  { label: 'Employees & Staff', role: 'EMPLOYEE' as const },
+                  { label: 'Students and Parents', role: 'STUDENT' as const }
+                ].map((portal, idx) => (
+                  <button 
+                    key={idx} 
+                    onClick={() => onLogin(portal.role)} 
+                    className="w-full p-6 bg-white rounded-[2rem] flex items-center justify-center text-sm font-black text-slate-800 shadow-sm hover:shadow-md transition-all border border-slate-50 hover:border-indigo-100 group"
+                  >
+                    <span className="group-hover:translate-x-1 transition-transform">{portal.label}</span>
                   </button>
                 ))}
               </div>

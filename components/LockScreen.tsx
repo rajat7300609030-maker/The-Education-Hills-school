@@ -1,22 +1,33 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { SchoolProfileData, UserProfileData, Student, ViewState } from '../types';
+import { SchoolProfileData, UserProfileData, Student, Employee, ViewState } from '../types';
 import AnimatedBackground from './AnimatedBackground';
+import { 
+  GraduationCap, 
+  ArrowRight, 
+  ChevronLeft,
+  User,
+  ShieldCheck,
+  Users,
+  Briefcase
+} from 'lucide-react';
 
 interface LockScreenProps {
   schoolData: SchoolProfileData;
   userData: UserProfileData;
   students: Student[];
+  employees: Employee[];
   classes: string[];
   correctPin?: string;
-  onUnlock: (role: 'ADMIN' | 'STUDENT', studentId?: string) => void;
+  onUnlock: (role: 'ADMIN' | 'STUDENT' | 'EMPLOYEE', id?: string) => void;
   onAddInquiry: (inquiry: { name: string; grade: string; parentName: string; phone: string; dob: string; address: string }) => void;
-  initialTab?: 'ADMIN' | 'STUDENT';
+  initialTab?: 'ADMIN' | 'STUDENT' | 'EMPLOYEE';
   onBackToLanding?: () => void;
 }
 
-const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students, classes, correctPin, onUnlock, onAddInquiry, initialTab, onBackToLanding }) => {
-  const [activeTab, setActiveTab] = useState<'ADMIN' | 'STUDENT'>(initialTab || 'ADMIN');
-  const [userId, setUserId] = useState(''); // Used for Admin ID
+const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students, employees, classes, correctPin, onUnlock, onAddInquiry, initialTab, onBackToLanding }) => {
+  const [activeTab, setActiveTab] = useState<'ADMIN' | 'STUDENT' | 'EMPLOYEE' | 'SELECT'>(initialTab || 'SELECT');
+  const [userId, setUserId] = useState(''); // Used for Admin ID & Employee ID
+  const [selectedAdminId, setSelectedAdminId] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [dob, setDob] = useState('');
@@ -97,9 +108,13 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
         if (activeTab === 'ADMIN') {
             // Admin Validation
             const inputId = userId.trim().toUpperCase();
-            const isAdminId = inputId === 'ADM 01' || inputId === userData.userId.toUpperCase();
+            const isAdminId = inputId === 'ADM 01' || 
+                              inputId === userData.userId.toUpperCase() ||
+                              (schoolData.leadershipList?.some(l => l.id.toUpperCase() === inputId) ?? false);
+            
             if (isAdminId) {
                 const isPinCorrect = password === systemPin || password === masterPin;
+                
                 if (isPinCorrect) {
                     onUnlock('ADMIN');
                     return;
@@ -108,6 +123,23 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                 }
             } else {
                 setError('Invalid Administrator ID.');
+            }
+        } else if (activeTab === 'EMPLOYEE') {
+            // Employee Validation
+            const inputId = userId.trim().toUpperCase();
+            const employee = employees.find(e => e.id.toUpperCase() === inputId && !e.isDeleted);
+            if (employee) {
+                const isPinCorrect = password === systemPin || password === masterPin;
+                const isDobCorrect = dob && dob === employee.dob;
+
+                if (isPinCorrect || isDobCorrect) {
+                    onUnlock('EMPLOYEE', employee.id);
+                    return;
+                } else {
+                    setError('Invalid Birth Date or Employee PIN.');
+                }
+            } else {
+                setError('Invalid Employee ID.');
             }
         } else {
             // Student Validation
@@ -152,71 +184,104 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
   };
 
   return (
-    <div className={`min-h-screen w-full transition-colors duration-700 ${activeTab === 'ADMIN' ? 'bg-slate-100' : 'bg-emerald-50'} flex flex-col items-center justify-center p-4 relative overflow-y-auto overflow-x-hidden font-sans`}>
+    <div className={`min-h-screen w-full transition-colors duration-700 ${activeTab === 'ADMIN' ? 'bg-indigo-50' : activeTab === 'EMPLOYEE' ? 'bg-amber-50' : activeTab === 'STUDENT' ? 'bg-emerald-50' : 'bg-slate-100'} flex flex-col items-center justify-center p-4 relative overflow-y-auto overflow-x-hidden font-sans`}>
         {/* Background Decorations */}
-        <div className={`absolute top-0 left-0 w-full h-1/2 transition-colors duration-700 ${activeTab === 'ADMIN' ? 'bg-indigo-600' : 'bg-emerald-600'} rounded-b-[5rem] shadow-2xl z-0`}></div>
-        <div className={`absolute top-1/4 left-1/4 w-64 h-64 transition-colors duration-700 ${activeTab === 'ADMIN' ? 'bg-indigo-400' : 'bg-emerald-400'} rounded-full blur-[100px] opacity-20 animate-pulse`}></div>
-        <div className={`absolute bottom-1/4 right-1/4 w-96 h-96 transition-colors duration-700 ${activeTab === 'ADMIN' ? 'bg-purple-400' : 'bg-teal-400'} rounded-full blur-[120px] opacity-20 animate-pulse delay-700`}></div>
+        <div className={`absolute top-0 left-0 w-full h-1/2 transition-colors duration-700 ${activeTab === 'ADMIN' ? 'bg-indigo-600' : activeTab === 'EMPLOYEE' ? 'bg-amber-600' : activeTab === 'STUDENT' ? 'bg-emerald-600' : 'bg-slate-800'} rounded-b-[5rem] shadow-2xl z-0`}></div>
+        <div className={`absolute top-1/4 left-1/4 w-64 h-64 transition-colors duration-700 ${activeTab === 'ADMIN' ? 'bg-indigo-400' : activeTab === 'EMPLOYEE' ? 'bg-amber-400' : activeTab === 'STUDENT' ? 'bg-emerald-400' : 'bg-slate-700'} rounded-full blur-[100px] opacity-20 animate-pulse`}></div>
+        <div className={`absolute bottom-1/4 right-1/4 w-96 h-96 transition-colors duration-700 ${activeTab === 'ADMIN' ? 'bg-purple-400' : activeTab === 'EMPLOYEE' ? 'bg-orange-400' : activeTab === 'STUDENT' ? 'bg-teal-400' : 'bg-indigo-900'} rounded-full blur-[120px] opacity-20 animate-pulse delay-700`}></div>
         
         {/* Main Card */}
-        <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden relative z-10 animate-scale-in">
-            {/* Back to Landing Button */}
-            {onBackToLanding && (
+        <div className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden relative z-10 animate-scale-in border border-white/20 backdrop-blur-sm">
+            {/* Back to Selection / Landing Button */}
+            {(onBackToLanding || (activeTab !== 'SELECT' && !initialTab)) && (
                 <button 
-                    onClick={onBackToLanding}
+                    onClick={() => {
+                        if (activeTab !== 'SELECT' && !initialTab) {
+                            setActiveTab('SELECT');
+                        } else if (onBackToLanding) {
+                            onBackToLanding();
+                        }
+                    }}
                     className="absolute top-6 left-6 w-10 h-10 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-100 hover:text-indigo-600 transition-all z-20 shadow-sm border border-slate-100"
-                    title="Back to Landing Page"
+                    title={activeTab === 'SELECT' ? "Back to Landing" : "Back to Selection"}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                    <ChevronLeft size={20} strokeWidth={3} />
                 </button>
             )}
             
             {/* School Branding Section */}
-            <div className="pt-8 pb-4 px-8 text-center flex flex-col items-center">
-                <div className="w-24 h-24 bg-white rounded-full p-2 shadow-lg mb-4 border-4 border-indigo-50">
-                    <div className="w-full h-full rounded-full bg-slate-50 flex items-center justify-center overflow-hidden">
+            <div className="pt-10 pb-4 px-8 text-center flex flex-col items-center">
+                <div className="w-20 h-20 bg-white rounded-3xl p-3 shadow-xl mb-4 border border-slate-100 transform -rotate-3 hover:rotate-0 transition-transform duration-500">
+                    <div className="w-full h-full rounded-2xl bg-slate-50 flex items-center justify-center overflow-hidden">
                         {schoolData?.logo ? (
-                            <img src={schoolData.logo} alt="Logo" className="w-full h-full object-contain p-2" />
+                            <img src={schoolData.logo} alt="Logo" className="w-full h-full object-contain p-1" />
                         ) : (
-                            <span className="text-4xl">🏫</span>
+                            <GraduationCap size={32} className="text-indigo-600" />
                         )}
                     </div>
                 </div>
                 
-                <h1 className="text-xl font-black text-slate-800 leading-tight mb-1">{schoolData?.name || "School Manager"}</h1>
+                <h1 className="text-xl font-black text-slate-800 leading-tight mb-1 uppercase tracking-tight">{schoolData?.name || "School Manager"}</h1>
                 {schoolData?.motto && (
-                    <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-2 italic">"{schoolData.motto}"</p>
+                    <p className={`text-[9px] font-black ${activeTab === 'ADMIN' ? 'text-indigo-600' : activeTab === 'EMPLOYEE' ? 'text-amber-600' : activeTab === 'STUDENT' ? 'text-emerald-600' : 'text-slate-500'} uppercase tracking-[0.3em] mb-4`}>{schoolData.motto}</p>
                 )}
-                <div className="flex flex-col items-center gap-1 mb-4">
-                    <div className="mt-1">
-                        <span className="bg-slate-100 text-slate-500 px-3 py-0.5 rounded-full text-[8px] font-black tracking-widest uppercase border border-slate-200">
-                            Session: {schoolData?.currentSession}
-                        </span>
-                    </div>
-                </div>
             </div>
 
-            {/* Tabs Selector */}
-            {!initialTab && (
-                <div className="flex p-1 bg-slate-100 mx-8 mb-6 rounded-2xl border border-slate-200">
-                    <button 
-                        onClick={() => setActiveTab('ADMIN')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'ADMIN' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        <span>👑</span> Admin
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('STUDENT')}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${activeTab === 'STUDENT' ? 'bg-white text-emerald-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        <span>🎓</span> Student
-                    </button>
-                </div>
-            )}
+            {/* Portal Selection or Login Form */}
+            <div className="px-8 pb-10">
+                {activeTab === 'SELECT' ? (
+                    <div className="space-y-3 pt-2">
+                        <p className="text-center text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 border-b border-slate-100 pb-4">Select Your Access Portal</p>
+                        
+                        <button 
+                            onClick={() => setActiveTab('ADMIN')}
+                            className="w-full p-4 bg-indigo-50 border-2 border-indigo-100 rounded-3xl flex items-center gap-4 hover:bg-indigo-600 hover:border-indigo-600 hover:text-white transition-all group text-left shadow-sm active:scale-95"
+                        >
+                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm group-hover:bg-indigo-500 transition-colors">👑</div>
+                            <div>
+                                <h3 className="font-black text-sm uppercase tracking-widest">Administrator</h3>
+                                <p className="text-[10px] opacity-60 font-bold group-hover:text-white/80">Management & Settings</p>
+                            </div>
+                            <ArrowRight size={16} className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
 
-            {/* Login Form */}
-            <div className="px-8 pb-8">
-                {isLoading && !isAdmissionOpen ? (
+                        <button 
+                            onClick={() => setActiveTab('EMPLOYEE')}
+                            className="w-full p-4 bg-amber-50 border-2 border-amber-100 rounded-3xl flex items-center gap-4 hover:bg-amber-600 hover:border-amber-600 hover:text-white transition-all group text-left shadow-sm active:scale-95"
+                        >
+                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm group-hover:bg-amber-500 transition-colors">👔</div>
+                            <div>
+                                <h3 className="font-black text-sm uppercase tracking-widest">Staff Portal</h3>
+                                <p className="text-[10px] opacity-60 font-bold group-hover:text-white/80">Employees & Teachers</p>
+                            </div>
+                            <ArrowRight size={16} className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+
+                        <button 
+                            onClick={() => setActiveTab('STUDENT')}
+                            className="w-full p-4 bg-emerald-50 border-2 border-emerald-100 rounded-3xl flex items-center gap-4 hover:bg-emerald-600 hover:border-emerald-600 hover:text-white transition-all group text-left shadow-sm active:scale-95"
+                        >
+                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm group-hover:bg-emerald-500 transition-colors">🎓</div>
+                            <div>
+                                <h3 className="font-black text-sm uppercase tracking-widest">Student Portal</h3>
+                                <p className="text-[10px] opacity-60 font-bold group-hover:text-white/80">Academics & Attendance</p>
+                            </div>
+                            <ArrowRight size={16} className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        <div className="flex items-center gap-3 mb-8 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${activeTab === 'ADMIN' ? 'bg-indigo-100 text-indigo-600' : activeTab === 'EMPLOYEE' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                 {activeTab === 'ADMIN' ? '👑' : activeTab === 'EMPLOYEE' ? '👔' : '🎓'}
+                             </div>
+                             <div>
+                                 <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">{activeTab === 'ADMIN' ? 'Admin Login' : activeTab === 'EMPLOYEE' ? 'Staff Login' : 'Student Login'}</h2>
+                                 <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Identity Verification Required</p>
+                             </div>
+                        </div>
+
+                        {isLoading && !isAdmissionOpen ? (
                     <div className="py-10 flex flex-col items-center justify-center space-y-4">
                         <div className="relative w-16 h-16">
                             <div className="absolute top-0 left-0 w-full h-full border-4 border-slate-100 rounded-full"></div>
@@ -227,19 +292,53 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                 ) : (
                     <form onSubmit={handleLogin} className="space-y-4">
                         {activeTab === 'ADMIN' ? (
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Administrator ID</label>
-                                <div className="relative group">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <span className="text-lg">🔑</span>
+                            <div className="space-y-4 animate-slide-up">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Administrator ID</label>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span className="text-lg">🔑</span>
+                                        </div>
+                                        <input 
+                                            type="text" required
+                                            className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all uppercase`}
+                                            placeholder="ADM 01"
+                                            value={userId}
+                                            onChange={(e) => setUserId(e.target.value)}
+                                        />
                                     </div>
-                                    <input 
-                                        type="text" required
-                                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-${activeTab === 'ADMIN' ? 'indigo' : 'emerald'}-500 focus:bg-white transition-all`}
-                                        placeholder="e.g. ADM 01"
-                                        value={userId}
-                                        onChange={(e) => setUserId(e.target.value)}
-                                    />
+                                </div>
+                            </div>
+                        ) : activeTab === 'EMPLOYEE' ? (
+                            <div className="space-y-4 animate-slide-up">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Employee ID</label>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span className="text-lg">👔</span>
+                                        </div>
+                                        <input 
+                                            type="text" required
+                                            className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-amber-500 focus:bg-white transition-all`}
+                                            placeholder="e.g. EMP 01"
+                                            value={userId}
+                                            onChange={(e) => setUserId(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1 animate-slide-up">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Birth Date</label>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <span className="text-lg">🎂</span>
+                                        </div>
+                                        <input 
+                                            type="date" 
+                                            className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-amber-500 focus:bg-white transition-all`}
+                                            value={dob}
+                                            onChange={(e) => setDob(e.target.value)}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         ) : (
@@ -252,7 +351,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                                         </div>
                                         <select 
                                             required
-                                            className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-${activeTab === 'ADMIN' ? 'indigo' : 'emerald'}-500 focus:bg-white transition-all appearance-none`}
+                                            className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none`}
                                             value={selectedClass}
                                             onChange={(e) => {
                                                 setSelectedClass(e.target.value);
@@ -276,7 +375,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                                         </div>
                                         <select 
                                             required
-                                            className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-${activeTab === 'ADMIN' ? 'indigo' : 'emerald'}-500 focus:bg-white transition-all appearance-none`}
+                                            className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-emerald-500 focus:bg-white transition-all appearance-none`}
                                             value={selectedStudentId}
                                             onChange={(e) => setSelectedStudentId(e.target.value)}
                                         >
@@ -291,7 +390,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                             </div>
                         )}
 
-                        {activeTab === 'STUDENT' && (
+                        {(activeTab === 'STUDENT') && (
                             <div className="space-y-1 animate-slide-up">
                                 <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Birth Date</label>
                                 <div className="relative group">
@@ -300,7 +399,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                                     </div>
                                     <input 
                                         type="date" 
-                                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-${activeTab === 'ADMIN' ? 'indigo' : 'emerald'}-500 focus:bg-white transition-all uppercase`}
+                                        className={`w-full pl-10 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-${activeTab === 'ADMIN' ? 'indigo' : activeTab === 'EMPLOYEE' ? 'amber' : 'emerald'}-500 focus:bg-white transition-all uppercase`}
                                         value={dob}
                                         onChange={(e) => setDob(e.target.value)}
                                     />
@@ -314,14 +413,14 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                         )}
 
                         <div className="space-y-1">
-                            <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Access PIN</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Access PIN / Password</label>
                             <div className="relative group">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <span className="text-lg">🔐</span>
                                 </div>
                                 <input 
                                     type={showPassword ? "text" : "password"}
-                                    className={`w-full pl-10 pr-10 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-${activeTab === 'ADMIN' ? 'indigo' : 'emerald'}-500 focus:bg-white transition-all`}
+                                    className={`w-full pl-10 pr-10 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-${activeTab === 'ADMIN' ? 'indigo' : activeTab === 'EMPLOYEE' ? 'amber' : 'emerald'}-500 focus:bg-white transition-all`}
                                     placeholder="••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
@@ -329,7 +428,7 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-indigo-600 cursor-pointer"
+                                    className={`absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-${activeTab === 'ADMIN' ? 'indigo' : activeTab === 'EMPLOYEE' ? 'amber' : 'emerald'}-600 cursor-pointer`}
                                 >
                                     {showPassword ? '🔒' : '👁️'}
                                 </button>
@@ -346,9 +445,9 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                         <div className="pt-2 flex flex-col gap-3">
                             <button 
                                 type="submit" 
-                                className={`w-full py-4 ${activeTab === 'ADMIN' ? 'bg-indigo-600 shadow-indigo-100 hover:bg-indigo-700 hover:shadow-indigo-300' : 'bg-emerald-600 shadow-emerald-100 hover:bg-emerald-700 hover:shadow-emerald-300'} text-white rounded-xl font-black uppercase text-xs tracking-[0.2em] shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2`}
+                                className={`w-full py-4 ${activeTab === 'ADMIN' ? 'bg-indigo-600 shadow-indigo-100 hover:bg-indigo-700 hover:shadow-indigo-300' : activeTab === 'EMPLOYEE' ? 'bg-amber-600 shadow-amber-100 hover:bg-amber-700 hover:shadow-amber-300' : 'bg-emerald-600 shadow-emerald-100 hover:bg-emerald-700 hover:shadow-emerald-300'} text-white rounded-xl font-black uppercase text-xs tracking-[0.2em] shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2`}
                             >
-                                {activeTab === 'ADMIN' ? 'Login as Administrator' : 'Access Student Portal'}
+                                {activeTab === 'ADMIN' ? 'Login as Administrator' : activeTab === 'EMPLOYEE' ? 'Access Staff Portal' : 'Access Student Portal'}
                             </button>
                             
                             {activeTab === 'STUDENT' && (
@@ -363,6 +462,8 @@ const LockScreen: React.FC<LockScreenProps> = ({ schoolData, userData, students,
                         </div>
                     </form>
                 )}
+            </>
+        )}
             </div>
         </div>
 

@@ -1,15 +1,17 @@
 import React, { useState, useMemo } from 'react';
-import { Employee } from '../types';
+import { Employee, EmployeeAttendanceRecord } from '../types';
 import { compressImage } from '../utils/imageUtils';
 
 interface EmployeesProps {
   employees: Employee[];
+  attendance: EmployeeAttendanceRecord[];
   currency: string;
   onAddEmployee: (employee: Omit<Employee, 'id' | 'isDeleted'>) => void;
   onEditEmployee: (employee: Employee) => void;
   onDeleteEmployee: (id: string) => void;
   onViewProfile: (id: string) => void;
   onRecordPayment: (id: string) => void;
+  onSaveAttendance: (records: EmployeeAttendanceRecord[]) => void;
   onNotify?: (message: string, type: 'success' | 'error' | 'info') => void;
   syncStatus?: 'synced' | 'syncing' | 'error';
   onManualSync?: () => Promise<void>;
@@ -18,17 +20,21 @@ interface EmployeesProps {
 
 const Employees: React.FC<EmployeesProps> = ({ 
   employees, 
+  attendance,
   currency, 
   onAddEmployee, 
   onEditEmployee, 
   onDeleteEmployee, 
   onViewProfile,
   onRecordPayment,
+  onSaveAttendance,
   onNotify,
   syncStatus = 'synced',
   onManualSync,
-  session = '2024-25'
+  session: initialSession = '2024-25'
 }) => {
+  const [session, setSession] = useState(initialSession);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -41,6 +47,7 @@ const Employees: React.FC<EmployeesProps> = ({
     phone: '',
     email: '',
     joiningDate: new Date().toISOString().split('T')[0],
+    dob: '',
     status: 'Active',
     photo: ''
   });
@@ -48,6 +55,28 @@ const Employees: React.FC<EmployeesProps> = ({
   const activeEmployees = useMemo(() => {
     return employees.filter(e => !e.isDeleted && e.name.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [employees, searchTerm]);
+
+  const attendanceStats = useMemo(() => {
+    const dailyRecords = attendance.filter(a => a.date === selectedDate);
+    return {
+      present: dailyRecords.filter(r => r.status === 'Present').length,
+      absent: dailyRecords.filter(r => r.status === 'Absent').length,
+      late: dailyRecords.filter(r => r.status === 'Late').length,
+      leave: dailyRecords.filter(r => r.status === 'Leave').length,
+    };
+  }, [attendance, selectedDate]);
+
+  const handleMarkAttendance = (employeeId: string, status: 'Present' | 'Absent' | 'Late' | 'Leave') => {
+    const newRecord: EmployeeAttendanceRecord = {
+      id: `EMP-ATT-${Date.now()}-${employeeId}`,
+      employeeId,
+      date: selectedDate,
+      status,
+      session
+    };
+    onSaveAttendance([newRecord]);
+    onNotify?.(`Marked ${status} for today`, 'info');
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +98,7 @@ const Employees: React.FC<EmployeesProps> = ({
       phone: '',
       email: '',
       joiningDate: new Date().toISOString().split('T')[0],
+      dob: '',
       status: 'Active',
       photo: ''
     });
@@ -85,6 +115,7 @@ const Employees: React.FC<EmployeesProps> = ({
       phone: employee.phone,
       email: employee.email,
       joiningDate: employee.joiningDate,
+      dob: employee.dob || '',
       status: employee.status,
       photo: employee.photo || ''
     });
@@ -203,6 +234,11 @@ const Employees: React.FC<EmployeesProps> = ({
                 </div>
 
                 <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Date of Birth</label>
+                    <input type="date" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" value={formData.dob} onChange={e => setFormData({...formData, dob: e.target.value})} />
+                </div>
+
+                <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Contact Number</label>
                     <input required type="tel" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="+91 ..." />
                 </div>
@@ -224,19 +260,63 @@ const Employees: React.FC<EmployeesProps> = ({
       )}
 
       {/* SEARCH AND LIST */}
-      <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4">
-          <span className="text-xl">🔍</span>
-          <input 
-            type="text" className="flex-1 bg-transparent font-bold outline-none text-slate-700" 
-            placeholder="Search employees by name..." 
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex-1 bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4">
+            <span className="text-xl">🔍</span>
+            <input 
+              type="text" className="flex-1 bg-transparent font-bold outline-none text-slate-700" 
+              placeholder="Search employees by name..." 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+        </div>
+        <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-4 min-w-[200px]">
+            <span className="text-xl">📅</span>
+            <input 
+              type="date" className="flex-1 bg-transparent font-bold outline-none text-slate-700 text-sm" 
+              value={selectedDate}
+              onChange={e => setSelectedDate(e.target.value)}
+            />
+        </div>
+      </div>
+
+      {/* ATTENDANCE SUMMARY */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center justify-between">
+              <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Present</p>
+                  <h4 className="text-xl font-black text-emerald-600 leading-none">{attendanceStats.present}</h4>
+              </div>
+              <span className="text-2xl opacity-40">✅</span>
+          </div>
+          <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center justify-between">
+              <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Absent</p>
+                  <h4 className="text-xl font-black text-rose-600 leading-none">{attendanceStats.absent}</h4>
+              </div>
+              <span className="text-2xl opacity-40">❌</span>
+          </div>
+          <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center justify-between">
+              <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Late</p>
+                  <h4 className="text-xl font-black text-amber-600 leading-none">{attendanceStats.late}</h4>
+              </div>
+              <span className="text-2xl opacity-40">⏰</span>
+          </div>
+          <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center justify-between">
+              <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Leave</p>
+                  <h4 className="text-xl font-black text-blue-600 leading-none">{attendanceStats.leave}</h4>
+              </div>
+              <span className="text-2xl opacity-40">📝</span>
+          </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {activeEmployees.map((emp, idx) => {
               const isActive = activeCardId === emp.id;
+              const todayAttendance = attendance.find(a => a.employeeId === emp.id && a.date === selectedDate);
+              
               return (
                 <div 
                     key={emp.id} 
@@ -255,7 +335,19 @@ const Employees: React.FC<EmployeesProps> = ({
                              </div>
                              <div className="min-w-0 pr-4">
                                  <h4 className="font-black text-slate-800 text-lg leading-tight truncate">{emp.name}</h4>
-                                 <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-1">{emp.role}</p>
+                                 <div className="flex items-center gap-2 mt-1">
+                                    <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{emp.role}</p>
+                                    {todayAttendance && (
+                                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                                            todayAttendance.status === 'Present' ? 'bg-emerald-100 text-emerald-600' :
+                                            todayAttendance.status === 'Absent' ? 'bg-rose-100 text-rose-600' :
+                                            todayAttendance.status === 'Late' ? 'bg-amber-100 text-amber-600' :
+                                            'bg-blue-100 text-blue-600'
+                                        }`}>
+                                            {todayAttendance.status}
+                                        </span>
+                                    )}
+                                 </div>
                              </div>
                         </div>
 
@@ -267,6 +359,9 @@ const Employees: React.FC<EmployeesProps> = ({
                                 <div className="flex items-center gap-2 text-xs font-bold text-slate-500 truncate">
                                     <span className="text-lg">📧</span> {emp.email || 'No Email'}
                                 </div>
+                                <div className="flex items-center gap-2 text-xs font-bold text-slate-500 truncate">
+                                    <span className="text-lg">🎂</span> {emp.dob ? new Date(emp.dob).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : 'N/A'}
+                                </div>
                                 <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 flex items-center justify-between mt-4">
                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Salary</span>
                                     <span className="font-black text-slate-800">{currency}{emp.salary.toLocaleString()}</span>
@@ -274,6 +369,43 @@ const Employees: React.FC<EmployeesProps> = ({
                             </div>
                         ) : (
                             <div className="flex-1 flex flex-col justify-center gap-3 py-4 animate-scale-in">
+                                {/* ATTENDANCE SECTION */}
+                                <div className="space-y-2 mb-4">
+                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Mark Attendance</p>
+                                     <div className="grid grid-cols-4 gap-2">
+                                         {[
+                                             { label: 'Present', emoji: '✅', color: 'emerald', status: 'Present', 
+                                               activeBg: 'bg-emerald-600 border-emerald-600 text-white', 
+                                               inactiveBg: 'bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-100' },
+                                             { label: 'Absent', emoji: '❌', color: 'rose', status: 'Absent',
+                                               activeBg: 'bg-rose-600 border-rose-600 text-white', 
+                                               inactiveBg: 'bg-rose-50 border-rose-100 text-rose-600 hover:bg-rose-100' },
+                                             { label: 'Late', emoji: '⏰', color: 'amber', status: 'Late',
+                                               activeBg: 'bg-amber-600 border-amber-600 text-white', 
+                                               inactiveBg: 'bg-amber-50 border-amber-100 text-amber-600 hover:bg-amber-100' },
+                                             { label: 'Leave', emoji: '📝', color: 'blue', status: 'Leave',
+                                               activeBg: 'bg-blue-600 border-blue-600 text-white', 
+                                               inactiveBg: 'bg-blue-50 border-blue-100 text-blue-600 hover:bg-blue-100' }
+                                         ].map(btn => (
+                                             <button
+                                                 key={btn.status}
+                                                 onClick={(e) => { 
+                                                     e.stopPropagation(); 
+                                                     handleMarkAttendance(emp.id, btn.status as any); 
+                                                 }}
+                                                 className={`flex flex-col items-center justify-center gap-1.5 p-2 rounded-2xl border transition-all active:scale-95 ${
+                                                     todayAttendance?.status === btn.status 
+                                                     ? `${btn.activeBg} shadow-lg shadow-indigo-100` 
+                                                     : `${btn.inactiveBg}`
+                                                 }`}
+                                             >
+                                                 <span className="text-sm">{btn.emoji}</span>
+                                                 <span className="text-[7px] font-black uppercase tracking-widest">{btn.label}</span>
+                                             </button>
+                                         ))}
+                                     </div>
+                                </div>
+
                                 <div className="grid grid-cols-2 gap-3">
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); onViewProfile(emp.id); }}
