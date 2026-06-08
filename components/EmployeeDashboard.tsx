@@ -58,6 +58,25 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
   onNotify
 }) => {
   const [activeSubView, setActiveSubView] = React.useState<SubView>('OVERVIEW');
+  const [viewHistory, setViewHistory] = React.useState<SubView[]>(['OVERVIEW']);
+
+  const handleSubViewChange = (view: SubView) => {
+    if (view !== activeSubView) {
+      setViewHistory(prev => [...prev, view]);
+      setActiveSubView(view);
+    }
+  };
+
+  const handleBack = () => {
+    if (viewHistory.length > 1) {
+      const newHistory = [...viewHistory];
+      newHistory.pop(); // remove current
+      const prevView = newHistory[newHistory.length - 1];
+      setViewHistory(newHistory);
+      setActiveSubView(prevView);
+    }
+  };
+
   const [isPanelOpen, setIsPanelOpen] = React.useState(false);
   const [selectedStudentClass, setSelectedStudentClass] = React.useState(classes[0] || '');
   const [localStudentAttendance, setLocalStudentAttendance] = React.useState<Record<string, 'Present' | 'Absent' | 'Late' | 'Leave'>>({});
@@ -65,6 +84,13 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
   const [searchTerm, setSearchTerm] = React.useState('');
   const [showLogoutModal, setShowLogoutModal] = React.useState(false);
   const [attendanceConfirm, setAttendanceConfirm] = React.useState<{ studentId: string; studentName: string; status: 'Present' | 'Absent' | 'Late' | 'Leave' } | null>(null);
+  const [currentTime, setCurrentTime] = React.useState(new Date());
+
+  // Real-time clock for Android Status Bar
+  React.useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
   
   const today = new Date().toISOString().split('T')[0];
   const [attendanceDate, setAttendanceDate] = React.useState(today);
@@ -106,6 +132,24 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-20 overflow-x-hidden relative">
+      {/* Android Style Top Status Bar */}
+      <div className="fixed top-0 left-0 right-0 bg-slate-900 z-[110] h-7 px-6 flex items-center justify-between text-[10px] text-white/70 font-bold font-mono tracking-tighter">
+        <div className="flex items-center gap-2">
+          <span>{currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5">
+            <span className="text-[8px]">5G</span>
+            <span>📶</span>
+          </div>
+          <span>🛜</span>
+          <span className="flex items-center">
+            <span className="text-[9px] mr-0.5">85%</span>
+            <span>🔋</span>
+          </span>
+        </div>
+      </div>
+
       {/* Sliding Navigation Panel */}
       <motion.div 
         initial={false}
@@ -129,7 +173,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 ml-2">Navigation</p>
           
           <button 
-            onClick={() => { setActiveSubView('OVERVIEW'); setIsPanelOpen(false); }}
+            onClick={() => { handleSubViewChange('OVERVIEW'); setIsPanelOpen(false); }}
             className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${activeSubView === 'OVERVIEW' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
           >
             <LayoutDashboard size={20} />
@@ -137,7 +181,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           </button>
 
           <button 
-            onClick={() => { setActiveSubView('HISTORY'); setIsPanelOpen(false); }}
+            onClick={() => { handleSubViewChange('HISTORY'); setIsPanelOpen(false); }}
             className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${activeSubView === 'HISTORY' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
           >
             <UserCircle size={20} />
@@ -145,7 +189,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           </button>
 
           <button 
-            onClick={() => { setActiveSubView('ATTENDANCE'); setIsPanelOpen(false); }}
+            onClick={() => { handleSubViewChange('ATTENDANCE'); setIsPanelOpen(false); }}
             className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${activeSubView === 'ATTENDANCE' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
           >
             <CalendarCheck size={20} />
@@ -153,7 +197,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           </button>
 
           <button 
-            onClick={() => { setActiveSubView('STUDENT_ATTENDANCE'); setIsPanelOpen(false); }}
+            onClick={() => { handleSubViewChange('STUDENT_ATTENDANCE'); setIsPanelOpen(false); }}
             className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${activeSubView === 'STUDENT_ATTENDANCE' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
           >
             <Users size={20} />
@@ -233,7 +277,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto -mt-16 px-6 relative z-20 space-y-8">
+      <main className="max-w-4xl mx-auto -mt-16 px-6 relative z-20 space-y-8 mb-24">
         {activeSubView === 'OVERVIEW' && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -276,7 +320,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                   <div className="flex items-center justify-between mb-4">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Student Attendance</p>
                     <button 
-                      onClick={() => setActiveSubView('STUDENT_ATTENDANCE')}
+                      onClick={() => handleSubViewChange('STUDENT_ATTENDANCE')}
                       className="text-[9px] font-black text-indigo-400 uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1"
                     >
                       Management <ChevronRight size={12} />
@@ -312,7 +356,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                      </div>
                   </div>
                   <button 
-                    onClick={() => setActiveSubView('STUDENT_ATTENDANCE')}
+                    onClick={() => handleSubViewChange('STUDENT_ATTENDANCE')}
                     className="w-full py-3 bg-white/5 hover:bg-white/10 text-white rounded-2xl text-[9px] font-black uppercase tracking-[0.2em] transition-all border border-white/5"
                   >
                     Open Attendance Sheet
@@ -322,7 +366,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
 
               {/* Quick History Shortcut */}
               <div 
-                onClick={() => setActiveSubView('HISTORY')}
+                onClick={() => handleSubViewChange('HISTORY')}
                 className="bg-white p-8 rounded-[3rem] shadow-xl border border-slate-100 flex items-center gap-6 group hover:border-amber-100 transition-all cursor-pointer"
               >
                 <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center shadow-inner border border-amber-100 group-hover:scale-110 transition-transform">
@@ -523,7 +567,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                       <span className="w-10 h-10 bg-slate-50 text-xl rounded-xl flex items-center justify-center border border-slate-100">📅</span> 
                       Recent Attendance
                     </h3>
-                    <button onClick={() => setActiveSubView('ATTENDANCE')} className="text-[10px] font-black text-amber-600 uppercase tracking-widest hover:underline">View All ➞</button>
+                    <button onClick={() => handleSubViewChange('ATTENDANCE')} className="text-[10px] font-black text-amber-600 uppercase tracking-widest hover:underline">View All ➞</button>
                   </div>
                   
                   <div className="space-y-3">
@@ -580,7 +624,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                 Profile History & Private Records
               </h3>
               <button 
-                onClick={() => setActiveSubView('OVERVIEW')}
+                onClick={() => handleSubViewChange('OVERVIEW')}
                 className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-amber-500 transition-colors"
               >
                 Back to overview
@@ -755,38 +799,53 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                     {students
                       .filter(s => s.grade === selectedStudentClass && !s.isDeleted && (s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.id.toLowerCase().includes(searchTerm.toLowerCase())))
                       .map(student => (
-                        <div key={student.id} className="grid grid-cols-12 items-center bg-slate-50 rounded-[2.5rem] p-4 border border-slate-100 group hover:bg-white hover:shadow-2xl hover:scale-[1.01] transition-all duration-300">
-                          <div className="col-span-5 flex items-center gap-5">
-                            <div className="w-14 h-14 rounded-3xl bg-white border border-slate-100 p-1 shadow-sm overflow-hidden flex items-center justify-center shrink-0">
+                        <div key={student.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white rounded-3xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all group">
+                          <div className="flex items-center gap-4 mb-4 sm:mb-0">
+                            <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center shrink-0">
                               {student.photo ? (
-                                <img src={student.photo} alt={student.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
+                                <img src={student.photo} alt={student.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                               ) : (
                                 <span className="text-xl font-black text-slate-200">{student.name.charAt(0)}</span>
                               )}
                             </div>
                             <div>
-                              <p className="text-base font-black text-slate-700 uppercase tracking-tight leading-none mb-1 group-hover:text-indigo-600 transition-colors">{student.name}</p>
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: {student.id}</p>
+                              <div className="flex items-center gap-3">
+                                <p className="text-base font-black text-slate-700 uppercase tracking-tight leading-none group-hover:text-indigo-600 transition-colors uppercase whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px] sm:max-w-none">{student.name}</p>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {(['Present', 'Absent', 'Late', 'Leave'] as const).map((status) => (
+                                    <button
+                                      key={status}
+                                      onClick={() => setAttendanceConfirm({ studentId: student.id, studentName: student.name, status })}
+                                      title={status}
+                                      className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] transition-all transform hover:scale-110 active:scale-90 ${
+                                        localStudentAttendance[student.id] === status
+                                          ? status === 'Present' ? 'bg-emerald-500 text-white shadow-lg' :
+                                            status === 'Absent' ? 'bg-rose-500 text-white shadow-lg' :
+                                            status === 'Late' ? 'bg-amber-500 text-white shadow-lg' :
+                                            'bg-indigo-500 text-white shadow-lg'
+                                          : 'bg-slate-100 text-slate-300 grayscale border border-slate-200 hover:grayscale-0 hover:bg-white'
+                                      }`}
+                                    >
+                                      {status === 'Present' ? '✅' : status === 'Absent' ? '❌' : status === 'Late' ? '⏰' : '🏠'}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 opacity-60">ID: {student.id}</p>
                             </div>
                           </div>
-                          <div className="col-span-7 flex items-center justify-center gap-2">
-                            {(['Present', 'Absent', 'Late', 'Leave'] as const).map((status) => (
-                              <button
-                                key={status}
-                                onClick={() => setAttendanceConfirm({ studentId: student.id, studentName: student.name, status })}
-                                className={`flex-1 max-w-[100px] py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                  localStudentAttendance[student.id] === status
-                                    ? status === 'Present' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' :
-                                      status === 'Absent' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30' :
-                                      status === 'Late' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/30' :
-                                      'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30'
-                                    : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50 hover:text-slate-600 hover:border-slate-200'
-                                }`}
-                              >
-                                {status === 'Present' ? 'P' : status === 'Absent' ? 'A' : status === 'Late' ? 'L' : 'LV'}
-                                <span className="hidden sm:inline"> - {status}</span>
-                              </button>
-                            ))}
+                          
+                          <div className="hidden lg:flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
+                             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Selected Status:</p>
+                             <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${
+                               localStudentAttendance[student.id] === 'Present' ? 'text-emerald-500' :
+                               localStudentAttendance[student.id] === 'Absent' ? 'text-rose-500' :
+                               localStudentAttendance[student.id] === 'Late' ? 'text-amber-500' :
+                               localStudentAttendance[student.id] === 'Leave' ? 'text-indigo-500' :
+                               'text-slate-300'
+                             }`}>
+                                {localStudentAttendance[student.id] || 'Pending'}
+                             </span>
                           </div>
                         </div>
                       ))}
@@ -820,7 +879,7 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                   Full Attendance Ledger
                 </h3>
                  <button 
-                  onClick={() => setActiveSubView('OVERVIEW')}
+                  onClick={() => handleSubViewChange('OVERVIEW')}
                   className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-amber-500 transition-colors"
                 >
                   Back to overview
@@ -864,6 +923,31 @@ const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           </motion.div>
         )}
       </main>
+
+      {/* Android Style System Navigation Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-3xl border-t border-white/10 z-[150] h-14 flex items-center justify-around px-8 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+        <button 
+          onClick={handleBack}
+          className="w-14 h-14 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-75 group"
+          title="Back"
+        >
+          <div className="w-5 h-5 border-l-[3px] border-b-[3px] border-current rotate-45 -mr-1 group-hover:scale-110 transition-transform"></div>
+        </button>
+        <button 
+          onClick={() => handleSubViewChange('OVERVIEW')}
+          className="w-14 h-14 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-75 group"
+          title="Home"
+        >
+          <div className="w-4.5 h-4.5 bg-current rounded-full group-hover:scale-110 transition-transform"></div>
+        </button>
+        <button 
+          onClick={() => setIsPanelOpen(true)}
+          className="w-14 h-14 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-75 group"
+          title="Menu / Recents"
+        >
+          <div className="w-4.5 h-4.5 border-[3px] border-current rounded-[4px] group-hover:scale-110 transition-transform"></div>
+        </button>
+      </div>
 
       {/* Confirmation Modals */}
       {showLogoutModal && (

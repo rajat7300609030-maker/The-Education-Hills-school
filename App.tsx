@@ -469,11 +469,19 @@ const App: React.FC = () => {
         }
 
       } catch (err: any) {
-        console.error("Database Connection Issue:", err.message || "Network Error");
-        if (retries > 0) {
-            setTimeout(() => fetchSupabaseData(retries - 1), 2000);
+        console.error("Database Connection Issue:", err);
+        const isNetworkError = err.message?.includes('fetch') || err.name === 'TypeError';
+        
+        if (retries > 0 && isNetworkError) {
+            console.warn("Network issue detected, retrying fetch...", retries);
+            setTimeout(() => fetchSupabaseData(retries - 1), 3000);
         } else {
-            showNotification("⚠️ Offline Mode: Cloud sync is limited.", "info");
+            setSyncStatus('error');
+            if (isNetworkError) {
+              showNotification("🌐 Connection Issue: Working in Offline Mode (Local Save Active).", "info");
+            } else {
+              showNotification("⚠️ Cloud Sync Limited: Data saved locally.", "info");
+            }
         }
       }
     };
@@ -567,8 +575,15 @@ const App: React.FC = () => {
       } catch (err: any) {
         setSyncStatus('error');
         console.error("Supabase Config Sync Error:", err);
+        const isNetworkError = err.message?.includes('fetch') || err.name === 'TypeError';
+        
         if (err.message?.includes('security policy') || err.message?.includes('rls')) {
           showNotification("🚨 Security Block: Settings not saved. Check Supabase RLS.", "error");
+        } else if (isNetworkError) {
+          // Don't spam if it's just a network glitch
+          if (syncStatus !== 'error') {
+            showNotification("🌐 Sync Interrupted: Check your internet connection.", "info");
+          }
         } else {
           setDbSyncError(err.message);
         }
@@ -607,8 +622,13 @@ const App: React.FC = () => {
     const { error } = await supabase.from('students').insert(newStudent);
     if (error) {
       setSyncStatus('error');
-      // Keep in local state even if sync fails
-      showNotification(`❌ Sync Failed: ${error.message}. Data saved locally.`, 'error');
+      const isNetworkError = error.message?.includes('fetch');
+      showNotification(
+        isNetworkError 
+          ? "🌐 Sync Failed: Network issue, saved locally." 
+          : `❌ Sync Failed: ${error.message}. Data saved locally.`, 
+        'error'
+      );
     } else {
       setSyncStatus('synced');
       showNotification(`✅ Registered ${newStudent.name}`, 'success');
